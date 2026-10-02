@@ -3,6 +3,17 @@ import type { Product, ColorOption } from "@/types";
 
 // Runtime registry of live adapted products
 const productRegistry = new Map<string, Product>();
+const categoryRegistry = new Map<string, string>();
+
+export function registerCategories(categories: Array<{ id: string; name: string }>): void {
+  for (const c of categories) {
+    categoryRegistry.set(c.id, c.name);
+  }
+}
+
+export function getCategoryLabel(id: string): string | undefined {
+  return categoryRegistry.get(id);
+}
 
 export function getRegisteredProduct(slugOrId: string): Product | undefined {
   return (
@@ -84,7 +95,10 @@ export function adaptProduct(api: ApiProduct): Product {
     slug,
     name: api.name,
     category: api.categoryId ?? "uncategorized",
-    categoryLabel: meta("categoryLabel") ?? "Clothing",
+    categoryLabel:
+      meta("categoryLabel") ??
+      (api.categoryId ? categoryRegistry.get(api.categoryId) : undefined) ??
+      "Clothing",
     gender,
     collections: meta("collections")?.split(",").map((c) => c.trim()).filter(Boolean) ?? [],
     price: Number(api.price || 0),

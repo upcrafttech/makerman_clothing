@@ -1,6 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api-client";
-import { adaptProduct, registerProducts, getRegisteredProduct } from "@/lib/adapters";
+import {
+  adaptProduct,
+  registerProducts,
+  getRegisteredProduct,
+  registerCategories,
+} from "@/lib/adapters";
 import { authStore } from "@/lib/auth-store";
 import type {
   ApiPagedProducts,
@@ -103,7 +108,11 @@ export function useProductBySlug(slug: string | undefined) {
 export function useCategories() {
   return useQuery({
     queryKey: ["categories"],
-    queryFn: () => apiFetch<ApiCategory[]>("/categories"),
+    queryFn: async () => {
+      const res = await apiFetch<ApiCategory[]>("/categories");
+      registerCategories(res ?? []);
+      return res;
+    },
     staleTime: 1000 * 60 * 10,
   });
 }

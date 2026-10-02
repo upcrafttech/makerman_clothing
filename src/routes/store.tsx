@@ -16,7 +16,7 @@ import { CATEGORIES } from "@/data/products";
 import { formatINR } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { applyFilters, productService, sortProducts } from "@/services";
-import { useProducts } from "@/hooks/use-api";
+import { useProducts, useCategories } from "@/hooks/use-api";
 import type { ProductFilters, SortKey } from "@/types";
 
 type SearchParams = {
@@ -94,6 +94,14 @@ export function StorePage() {
     sort: activeSort === "newest" ? "newest" : undefined,
   });
 
+  const { data: apiCategories } = useCategories();
+  const categories = useMemo(() => {
+    if (apiCategories && apiCategories.length > 0) {
+      return apiCategories.map((c) => ({ slug: c.id, label: c.name }));
+    }
+    return CATEGORIES;
+  }, [apiCategories]);
+
   // Filter products
   const filteredProducts = useMemo(() => {
     const filters: Partial<ProductFilters> = {
@@ -168,7 +176,7 @@ export function StorePage() {
                   : activeGender === "women"
                     ? "Women's Wardrobe"
                     : activeCategory
-                      ? CATEGORIES.find((c) => c.slug === activeCategory)?.label ?? "Curated Store"
+                      ? categories.find((c) => c.slug === activeCategory)?.label ?? "Curated Store"
                       : "The Complete Store"}
             </h1>
             <p className="mt-3 text-xs sm:text-sm text-muted-foreground leading-relaxed">
@@ -282,7 +290,7 @@ export function StorePage() {
                 Category
               </p>
               <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
-                {CATEGORIES.map((cat) => (
+                {categories.map((cat) => (
                   <button
                     key={cat.slug}
                     type="button"
@@ -517,7 +525,7 @@ export function StorePage() {
                 Category
               </p>
               <div className="flex flex-wrap gap-2">
-                {CATEGORIES.map((cat) => (
+                {categories.map((cat) => (
                   <button
                     key={cat.slug}
                     type="button"
