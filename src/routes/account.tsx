@@ -23,6 +23,14 @@ import { formatINR } from "@/lib/format";
 import { useShop } from "@/lib/shop-store";
 import { cn } from "@/lib/utils";
 import { productService } from "@/services";
+import { authStore } from "@/lib/auth-store";
+import {
+  useLogin,
+  useRegister,
+  useVerifyOtp,
+  useOrders,
+  useApiWishlist,
+} from "@/hooks/use-api";
 import type { Address } from "@/types";
 
 export const Route = createFileRoute("/account")({
@@ -50,8 +58,20 @@ export function AccountPage() {
   } = useShop();
 
   const [activeTab, setActiveTab] = useState<"overview" | "orders" | "addresses" | "profile" | "favorites">("overview");
-  const [loginEmail, setLoginEmail] = useState("");
-  const [loginName, setLoginName] = useState("");
+  const [authMode, setAuthMode] = useState<"login" | "register" | "otp">("login");
+  const [authEmail, setAuthEmail] = useState("");
+  const [authPassword, setAuthPassword] = useState("");
+  const [authName, setAuthName] = useState("");
+  const [authPhone, setAuthPhone] = useState("");
+  const [authOtp, setAuthOtp] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const loginMutation = useLogin();
+  const registerMutation = useRegister();
+  const verifyOtpMutation = useVerifyOtp();
+  const { data: apiOrdersData } = useOrders();
+  const { data: apiWishlistData } = useApiWishlist();
+
   const [isAddingAddress, setIsAddingAddress] = useState(false);
   const [newAddr, setNewAddr] = useState<Partial<Address>>({
     fullName: "",
@@ -63,14 +83,86 @@ export function AccountPage() {
     pincode: "",
   });
 
-  const handleSignIn = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!loginEmail.includes("@")) {
+    if (!authEmail.includes("@")) {
       toast.error("Please enter a valid email address");
       return;
     }
-    signIn(loginEmail, loginName || "Valued Client");
-    toast.success("Welcome to your Makerman account");
+    setIsSubmitting(true);
+    try {
+      const res = await loginMutation.mutateAsync({
+        email: authEmail.trim(),
+        password: authPassword,
+      });
+      authStore.set(res);
+      signIn(res.email, res.name);
+      toast.success("Welcome back", { description: res.name });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Invalid credentials";
+      toast.error("Sign in failed", { description: msg });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!authEmail.includes("@")) {
+      toast.error("Please enter a valid email address");
+      return;
+    }
+    if (!authName.trim()) {
+      toast.error("Please enter your name");
+      return;
+    }
+    if (authPassword.length < 6) {
+      toast.error("Password must be at least 6 characters");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await registerMutation.mutateAsync({
+        name: authName.trim(),
+        email: authEmail.trim(),
+        password: authPassword,
+        phone: authPhone.replace(/\D/g, "") || undefined,
+      });
+      setAuthMode("otp");
+      toast.success("Verification code sent", {
+        description: `Check your inbox at ${authEmail}`,
+      });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Registration failed";
+      toast.error("Registration failed", { description: msg });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!authOtp.trim()) {
+      toast.error("Please enter the verification OTP");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const res = await verifyOtpMutation.mutateAsync({
+        email: authEmail.trim(),
+        otp: authOtp.trim(),
+      });
+      authStore.set(res);
+      signIn(res.email, res.name);
+      toast.success("Account verified", { description: `Welcome ${res.name}` });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Invalid OTP code";
+      toast.error("Verification failed", { description: msg });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleCreateAddress = (e: React.FormEvent) => {
@@ -96,10 +188,10 @@ export function AccountPage() {
     toast.success("New delivery address saved.");
   };
 
-  // If not logged in, show elegant auth card
+  // If not logged in, show elegant auth card (Login, Register, OTP verification)
   if (!session) {
     return (
-      <div className="min-h-[70vh] bg-background py-16 md:py-24">
+      <div className="min-h-[75vh] bg-background py-16 md:py-24">
         <div className="container-page max-w-md mx-auto">
           <div className="text-center mb-8 space-y-3">
             <MakermanLogo size="sm" className="mx-auto" />
@@ -107,57 +199,279 @@ export function AccountPage() {
               Client Portal
             </p>
             <h1 className="font-display text-3xl sm:text-4xl text-foreground font-normal">
-              Sign In to Makerman
+              {authMode === "login"
+                ? "Sign In to Makerman"
+                : authMode === "register"
+                  ? "Create Your Account"
+                  : "Verify Your Email"}
             </h1>
             <p className="text-xs text-muted-foreground leading-relaxed">
-              Track your orders, view saved delivery addresses, and manage your wardrobe favorites.
+              {authMode === "otp"
+                ? `Enter the 6-digit one-time code sent to ${authEmail}`
+                : "Track orders, access saved favorites, and manage your wardrobe."}
             </p>
           </div>
 
-          <form onSubmit={handleSignIn} className="border border-border p-6 sm:p-8 bg-background rounded-sm shadow-soft space-y-4">
-            <div>
-              <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground block mb-1">
-                Email Address
-              </label>
-              <input
-                type="email"
-                required
-                value={loginEmail}
-                onChange={(e) => setLoginEmail(e.target.value)}
-                placeholder="you@domain.com"
-                className="w-full h-11 border border-border px-3 text-xs rounded-sm outline-none focus:border-foreground"
-              />
-            </div>
+          <div className="border border-border p-6 sm:p-8 bg-background rounded-sm shadow-soft space-y-4">
+            {/* Mode Tabs */}
+            {authMode !== "otp" && (
+              <div className="flex border-b border-border/70 mb-4 pb-2">
+                <button
+                  type="button"
+                  onClick={() => setAuthMode("login")}
+                  className={cn(
+                    "flex-1 text-xs uppercase tracking-wider py-1 font-semibold text-center border-b-2 transition-colors",
+                    authMode === "login"
+                      ? "border-foreground text-foreground"
+                      : "border-transparent text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  Sign In
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAuthMode("register")}
+                  className={cn(
+                    "flex-1 text-xs uppercase tracking-wider py-1 font-semibold text-center border-b-2 transition-colors",
+                    authMode === "register"
+                      ? "border-foreground text-foreground"
+                      : "border-transparent text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  Register
+                </button>
+              </div>
+            )}
 
-            <div>
-              <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground block mb-1">
-                Full Name (Optional)
-              </label>
-              <input
-                type="text"
-                value={loginName}
-                onChange={(e) => setLoginName(e.target.value)}
-                placeholder="e.g. Siddharth Sen"
-                className="w-full h-11 border border-border px-3 text-xs rounded-sm outline-none focus:border-foreground"
-              />
-            </div>
+            {/* Form: LOGIN */}
+            {authMode === "login" && (
+              <form onSubmit={handleLogin} className="space-y-4">
+                <div>
+                  <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground block mb-1">
+                    Email Address
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    value={authEmail}
+                    onChange={(e) => setAuthEmail(e.target.value)}
+                    placeholder="you@domain.com"
+                    className="w-full h-11 border border-border px-3 text-xs rounded-sm outline-none focus:border-foreground"
+                  />
+                </div>
 
-            <Button type="submit" className="w-full h-12 text-xs font-semibold uppercase tracking-[0.14em] bg-ink text-ink-foreground hover:bg-ink/90 rounded-sm mt-2">
-              Sign In / Register
-            </Button>
+                <div>
+                  <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground block mb-1">
+                    Password
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    value={authPassword}
+                    onChange={(e) => setAuthPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full h-11 border border-border px-3 text-xs rounded-sm outline-none focus:border-foreground"
+                  />
+                </div>
 
-            <p className="text-[11px] text-center text-muted-foreground pt-2">
-              By continuing, you agree to Makerman's Terms of Service and Privacy Policy.
-            </p>
-          </form>
+                <Button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="w-full h-12 text-xs font-semibold uppercase tracking-[0.14em] bg-ink text-ink-foreground hover:bg-ink/90 rounded-sm mt-2"
+                >
+                  {isSubmitting ? "Signing In..." : "Sign In"}
+                </Button>
+
+                <p className="text-[11px] text-center text-muted-foreground pt-2">
+                  Don't have an account?{" "}
+                  <button
+                    type="button"
+                    onClick={() => setAuthMode("register")}
+                    className="text-amber-600 font-medium hover:underline"
+                  >
+                    Create Account
+                  </button>
+                </p>
+              </form>
+            )}
+
+            {/* Form: REGISTER */}
+            {authMode === "register" && (
+              <form onSubmit={handleRegister} className="space-y-4">
+                <div>
+                  <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground block mb-1">
+                    Full Name *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={authName}
+                    onChange={(e) => setAuthName(e.target.value)}
+                    placeholder="e.g. Siddharth Sen"
+                    className="w-full h-11 border border-border px-3 text-xs rounded-sm outline-none focus:border-foreground"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground block mb-1">
+                    Email Address *
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    value={authEmail}
+                    onChange={(e) => setAuthEmail(e.target.value)}
+                    placeholder="you@domain.com"
+                    className="w-full h-11 border border-border px-3 text-xs rounded-sm outline-none focus:border-foreground"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground block mb-1">
+                    Mobile Phone (Optional)
+                  </label>
+                  <input
+                    type="tel"
+                    value={authPhone}
+                    onChange={(e) => setAuthPhone(e.target.value)}
+                    placeholder="98204 41120"
+                    className="w-full h-11 border border-border px-3 text-xs rounded-sm outline-none focus:border-foreground font-mono"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground block mb-1">
+                    Create Password *
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    value={authPassword}
+                    onChange={(e) => setAuthPassword(e.target.value)}
+                    placeholder="At least 6 characters"
+                    className="w-full h-11 border border-border px-3 text-xs rounded-sm outline-none focus:border-foreground"
+                  />
+                </div>
+
+                <Button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="w-full h-12 text-xs font-semibold uppercase tracking-[0.14em] bg-ink text-ink-foreground hover:bg-ink/90 rounded-sm mt-2"
+                >
+                  {isSubmitting ? "Sending OTP..." : "Register & Get OTP"}
+                </Button>
+
+                <p className="text-[11px] text-center text-muted-foreground pt-2">
+                  Already have an account?{" "}
+                  <button
+                    type="button"
+                    onClick={() => setAuthMode("login")}
+                    className="text-amber-600 font-medium hover:underline"
+                  >
+                    Sign In
+                  </button>
+                </p>
+              </form>
+            )}
+
+            {/* Form: VERIFY OTP */}
+            {authMode === "otp" && (
+              <form onSubmit={handleVerifyOtp} className="space-y-4">
+                <div>
+                  <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground block mb-1">
+                    Verification Code (OTP)
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    maxLength={8}
+                    value={authOtp}
+                    onChange={(e) => setAuthOtp(e.target.value)}
+                    placeholder="Enter 6-digit code"
+                    className="w-full h-12 border border-border px-3 text-center text-lg tracking-widest font-mono rounded-sm outline-none focus:border-foreground"
+                  />
+                </div>
+
+                <Button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="w-full h-12 text-xs font-semibold uppercase tracking-[0.14em] bg-ink text-ink-foreground hover:bg-ink/90 rounded-sm mt-2"
+                >
+                  {isSubmitting ? "Verifying..." : "Verify & Sign In"}
+                </Button>
+
+                <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setAuthMode("register")}
+                    className="hover:underline"
+                  >
+                    ← Edit Details
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAuthMode("login")}
+                    className="text-amber-600 hover:underline font-medium"
+                  >
+                    Back to Sign In
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
         </div>
       </div>
     );
   }
 
+  const liveUser = authStore.get();
+  const liveOrders = apiOrdersData?.content;
+  const effectiveOrders =
+    liveOrders && liveOrders.length > 0
+      ? liveOrders.map((o) => ({
+          id: o.id,
+          date: new Date(o.createdAt || Date.now()).toLocaleDateString("en-IN", {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+          }),
+          status: (o.status || "Order Placed") as Order["status"],
+          deliveryDate: "Estimated 3-5 business days",
+          paymentMethod: o.paymentMethod || "Prepaid",
+          address: addresses[0] || {
+            id: "1",
+            fullName: o.customerName || "Customer",
+            phone: o.customerPhone || "+91 98204 41120",
+            line1: o.shippingAddress || "Main Street",
+            city: "Mumbai",
+            state: "Maharashtra",
+            pincode: "400013",
+            isDefault: true,
+          },
+          items: (o.items || []).map((it) => ({
+            productSlug: it.productId,
+            name: it.productName || "Makerman Garment",
+            size: "Regular",
+            color: "Standard",
+            quantity: it.quantity,
+            price: it.price,
+          })),
+          subtotal: o.totalAmount,
+          shipping: 0,
+          tax: 0,
+          total: o.totalAmount,
+        }))
+      : orders;
+
   const favoriteProducts = wishlist
     .map((slug) => productService.bySlug(slug))
     .filter((p): p is NonNullable<typeof p> => Boolean(p));
+
+  const handleSignOut = () => {
+    authStore.clear();
+    signOut();
+    toast("Signed out of Makerman account");
+  };
 
   return (
     <div className="min-h-screen bg-background py-10 md:py-16">
@@ -169,7 +483,7 @@ export function AccountPage() {
               Makerman Client Concierge
             </p>
             <h1 className="font-display text-3xl sm:text-4xl text-foreground font-normal mt-1">
-              Welcome, {session.firstName}
+              Welcome, {liveUser?.name ? liveUser.name.split(" ")[0] : session.firstName}
             </h1>
             <p className="text-xs text-muted-foreground mt-1">
               Signed in as <span className="font-mono text-foreground">{session.email}</span>
@@ -178,7 +492,7 @@ export function AccountPage() {
 
           <button
             type="button"
-            onClick={signOut}
+            onClick={handleSignOut}
             className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors self-start sm:self-auto"
           >
             <LogOut className="h-4 w-4" /> Sign Out
@@ -189,7 +503,7 @@ export function AccountPage() {
         <div className="flex border-b border-border/70 overflow-x-auto no-scrollbar gap-1 sm:gap-2 mb-8">
           {[
             { id: "overview", label: "Overview" },
-            { id: "orders", label: `Orders (${orders.length})` },
+            { id: "orders", label: `Orders (${effectiveOrders.length})` },
             { id: "addresses", label: "Addresses" },
             { id: "profile", label: "Profile" },
             { id: "favorites", label: `Favorites (${wishlist.length})` },
@@ -217,7 +531,7 @@ export function AccountPage() {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="p-5 border border-border rounded-sm bg-[#FAF8F5]">
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Orders</p>
-                <p className="font-display text-2xl font-semibold text-foreground mt-2">{orders.length}</p>
+                <p className="font-display text-2xl font-semibold text-foreground mt-2">{effectiveOrders.length}</p>
                 <button
                   type="button"
                   onClick={() => setActiveTab("orders")}
@@ -253,17 +567,17 @@ export function AccountPage() {
             </div>
 
             {/* Recent Order Preview */}
-            {orders.length > 0 && (
+            {effectiveOrders.length > 0 && (
               <div className="border border-border p-6 rounded-sm bg-background">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="font-display text-lg font-normal">Recent Order</h3>
                   <span className="text-xs px-2.5 py-1 bg-emerald-100 text-emerald-800 rounded-xs font-semibold">
-                    {orders[0]?.status}
+                    {effectiveOrders[0]?.status}
                   </span>
                 </div>
                 <div className="text-xs text-muted-foreground space-y-1">
-                  <p>Order ID: <strong className="text-foreground">{orders[0]?.id}</strong> · Placed on {orders[0]?.date}</p>
-                  <p>Total: <strong className="text-foreground font-semibold">{formatINR(orders[0]?.total ?? 0)}</strong></p>
+                  <p>Order ID: <strong className="text-foreground">{effectiveOrders[0]?.id}</strong> · Placed on {effectiveOrders[0]?.date}</p>
+                  <p>Total: <strong className="text-foreground font-semibold">{formatINR(effectiveOrders[0]?.total ?? 0)}</strong></p>
                 </div>
                 <div className="mt-4 pt-4 border-t border-border/60">
                   <Button
@@ -283,7 +597,7 @@ export function AccountPage() {
         {/* Tab 2: Orders */}
         {activeTab === "orders" && (
           <div className="space-y-6 animate-in fade-in-50">
-            {orders.length === 0 ? (
+            {effectiveOrders.length === 0 ? (
               <div className="py-16 text-center border border-dashed border-border rounded-sm p-6">
                 <Package className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
                 <p className="font-display text-xl">No orders yet</p>
@@ -294,7 +608,7 @@ export function AccountPage() {
               </div>
             ) : (
               <div className="space-y-6">
-                {orders.map((order) => (
+                {effectiveOrders.map((order) => (
                   <div key={order.id} className="border border-border rounded-sm bg-background overflow-hidden">
                     {/* Order Header */}
                     <div className="p-4 sm:p-5 bg-[#FAF8F5] border-b border-border flex flex-wrap items-center justify-between gap-3 text-xs">

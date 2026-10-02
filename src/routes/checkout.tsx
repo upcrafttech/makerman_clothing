@@ -20,6 +20,9 @@ import { cartTotals, formatINR } from "@/lib/format";
 import { useShop } from "@/lib/shop-store";
 import { cn } from "@/lib/utils";
 import { productService } from "@/services";
+import { useCreateOrder } from "@/hooks/use-api";
+import { authStore } from "@/lib/auth-store";
+import { getRegisteredProduct } from "@/lib/adapters";
 import type { Address, Order } from "@/types";
 
 export const Route = createFileRoute("/checkout")({
@@ -71,11 +74,16 @@ export function CheckoutPage() {
       isDefault: false,
     };
 
-  const handlePlaceOrder = () => {
-    const orderId = `MK-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
+  const createOrderMutation = useCreateOrder();
+  const [isPlacing, setIsPlacing] = useState(false);
+
+  const handlePlaceOrder = async () => {
+    setIsPlacing(true);
+    let orderId = `MK-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
+
     const items = activeLines
       .map((line) => {
-        const p = productService.bySlug(line.productSlug);
+        const p = getRegisteredProduct(line.productSlug) ?? productService.bySlug(line.productSlug);
         if (!p) return null;
         return {
           productSlug: p.slug,
@@ -87,6 +95,51 @@ export function CheckoutPage() {
         };
       })
       .filter(Boolean) as Order["items"];
+
+    const token = authStore.getToken();
+    if (token) {
+      try {
+        const apiItems = activeLines
+          .map((line) => {
+            const p = getRegisteredProduct(line.productSlug) ?? productService.bySlug(line.productSlug);
+            if (!p) return null;
+            const variant = p.variants?.find(
+              (v) =>
+                v.sizeLabel.toLowerCase() === line.size.toLowerCase() ||
+                v.colorName.toLowerCase() === line.color.toLowerCase(),
+            );
+            return {
+              productId: p.id,
+              variantUuid: variant?.id ?? null,
+              quantity: line.quantity,
+              price: p.price,
+            };
+          })
+          .filter(Boolean);
+
+        const payload = {
+          items: apiItems,
+          discountAmount: 0,
+          totalAmount: finalTotal,
+          customerName: currentAddress.fullName,
+          customerPhone:
+            currentAddress.phone.replace("+91", "").replace(/\D/g, "").slice(-10) || "9820441120",
+          address: currentAddress.line1,
+          landmark: currentAddress.line2 || "",
+          city: currentAddress.city,
+          state: currentAddress.state,
+          pincode: currentAddress.pincode.replace(/\D/g, "").slice(0, 6) || "400013",
+          paymentMethod: paymentMethod.toUpperCase(),
+        };
+
+        const res = await createOrderMutation.mutateAsync(payload);
+        if (res?.id) {
+          orderId = res.id;
+        }
+      } catch (err) {
+        console.warn("Backend order creation warning (fallback to local order):", err);
+      }
+    }
 
     const newOrder: Order = {
       id: orderId,
@@ -113,6 +166,7 @@ export function CheckoutPage() {
     setConfirmedOrder(newOrder);
     setStep(4);
     clearCart();
+    setIsPlacing(false);
     toast.success(`Order ${orderId} placed successfully.`);
   };
 
@@ -518,10 +572,13 @@ export function CheckoutPage() {
                   )}
 
                   <Button
+                    disabled={isPlacing}
                     onClick={handlePlaceOrder}
                     className="w-full h-13 text-xs font-semibold uppercase tracking-[0.14em] bg-ink text-ink-foreground hover:bg-ink/90 rounded-sm shadow-md"
                   >
-                    Confirm & Complete Order — {formatINR(finalTotal)}
+                    {isPlacing
+                      ? "Securing Garments..."
+                      : `Confirm & Complete Order — ${formatINR(finalTotal)}`}
                   </Button>
                 </div>
               )}

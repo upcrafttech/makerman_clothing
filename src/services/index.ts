@@ -7,6 +7,7 @@
  */
 import { CATEGORIES, products } from "@/data/products";
 import { articles, collections, faqs, reviews, seedOrders } from "@/data/content";
+import { getRegisteredProduct, getAllRegisteredProducts } from "@/lib/adapters";
 import type { Article, Collection, Order, Product, ProductFilters, Review, SortKey } from "@/types";
 
 const delay = <T,>(value: T, ms = 120): Promise<T> =>
@@ -59,16 +60,33 @@ export function sortProducts(list: Product[], sort: SortKey): Product[] {
 }
 
 export const productService = {
-  all: (): Product[] => products,
-  list: async (filters: Partial<ProductFilters> = {}, sort: SortKey = "featured"): Promise<Product[]> =>
-    delay(sortProducts(applyFilters(products, filters), sort)),
-  bySlug: (slug: string): Product | undefined => products.find((p) => p.slug === slug),
-  bySlugAsync: async (slug: string) => delay(products.find((p) => p.slug === slug)),
+  all: (): Product[] => {
+    const live = getAllRegisteredProducts();
+    return live.length > 0 ? live : products;
+  },
+  list: async (filters: Partial<ProductFilters> = {}, sort: SortKey = "featured"): Promise<Product[]> => {
+    const live = getAllRegisteredProducts();
+    const source = live.length > 0 ? live : products;
+    return delay(sortProducts(applyFilters(source, filters), sort));
+  },
+  bySlug: (slug: string): Product | undefined =>
+    getRegisteredProduct(slug) ?? products.find((p) => p.slug === slug),
+  bySlugAsync: async (slug: string) =>
+    delay(getRegisteredProduct(slug) ?? products.find((p) => p.slug === slug)),
   bySlugs: (slugs: string[]): Product[] =>
-    slugs.map((s) => products.find((p) => p.slug === s)).filter((p): p is Product => Boolean(p)),
-  newArrivals: (limit = 8): Product[] => sortProducts(products, "newest").slice(0, limit),
-  bestSellers: (limit = 8): Product[] =>
-    products.filter((p) => p.badge === "Best Seller" || p.rating >= 4.6).slice(0, limit),
+    slugs
+      .map((s) => getRegisteredProduct(s) ?? products.find((p) => p.slug === s))
+      .filter((p): p is Product => Boolean(p)),
+  newArrivals: (limit = 8): Product[] => {
+    const live = getAllRegisteredProducts();
+    const source = live.length > 0 ? live : products;
+    return sortProducts(source, "newest").slice(0, limit);
+  },
+  bestSellers: (limit = 8): Product[] => {
+    const live = getAllRegisteredProducts();
+    const source = live.length > 0 ? live : products;
+    return source.filter((p) => p.badge === "Best Seller" || p.rating >= 4.6).slice(0, limit);
+  },
   related: (product: Product, limit = 8): Product[] =>
     products
       .filter((p) => p.slug !== product.slug)

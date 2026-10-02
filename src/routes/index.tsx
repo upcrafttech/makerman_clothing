@@ -22,6 +22,7 @@ import { formatINR } from "@/lib/format";
 import { useShop } from "@/lib/shop-store";
 import { cn } from "@/lib/utils";
 import { productService } from "@/services";
+import { useProducts } from "@/hooks/use-api";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -43,7 +44,12 @@ export function HomePage() {
   const [newsletterEmail, setNewsletterEmail] = useState("");
   const [activeHotspot, setActiveHotspot] = useState<string | null>(null);
 
-  const newArrivals = productService.newArrivals(6);
+  const { data: arrivalsData } = useProducts({ sort: "newest", size: 6 });
+  const liveArrivals = arrivalsData?.content;
+  const newArrivals =
+    liveArrivals && liveArrivals.length > 0
+      ? liveArrivals.slice(0, 6)
+      : productService.newArrivals(6);
 
   // Look pieces for "Shop The Look"
   const lookHotspots = [

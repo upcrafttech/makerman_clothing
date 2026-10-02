@@ -7,6 +7,7 @@ import { formatINR } from "@/lib/format";
 import { useShop } from "@/lib/shop-store";
 import { cn } from "@/lib/utils";
 import { productService } from "@/services";
+import { useProducts } from "@/hooks/use-api";
 
 const POPULAR_SEARCHES = [
   "Raw Denim",
@@ -20,7 +21,20 @@ const POPULAR_SEARCHES = [
 export function SearchModal() {
   const { searchOpen, setSearchOpen } = useShop();
   const [query, setQuery] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState(query);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedQuery(query);
+    }, 250);
+    return () => clearTimeout(handler);
+  }, [query]);
+
+  const { data: searchData } = useProducts({
+    search: debouncedQuery,
+    size: 8,
+  });
 
   useEffect(() => {
     if (searchOpen) {
@@ -48,6 +62,9 @@ export function SearchModal() {
 
   const results = useMemo(() => {
     if (!query.trim()) return [];
+    if (searchData?.content && searchData.content.length > 0) {
+      return searchData.content;
+    }
     return productService.all().filter((p) => {
       const q = query.toLowerCase();
       return (
@@ -57,7 +74,7 @@ export function SearchModal() {
         p.tags.some((t) => t.toLowerCase().includes(q))
       );
     });
-  }, [query]);
+  }, [query, searchData]);
 
   return (
     <div

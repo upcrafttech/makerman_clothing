@@ -27,6 +27,7 @@ export type Product = {
   tags: string[];
   createdAt: string;
   completeTheLook?: string[] | undefined;
+  variants?: Array<{ id: string; sizeLabel: string; colorName: string; colorCode: string; quantity: number }> | undefined;
 };
 
 export type Collection = {

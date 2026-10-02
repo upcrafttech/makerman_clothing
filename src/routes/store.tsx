@@ -16,6 +16,7 @@ import { CATEGORIES } from "@/data/products";
 import { formatINR } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { applyFilters, productService, sortProducts } from "@/services";
+import { useProducts } from "@/hooks/use-api";
 import type { ProductFilters, SortKey } from "@/types";
 
 type SearchParams = {
@@ -88,6 +89,11 @@ export function StorePage() {
   const activeInStock = search.inStock ?? false;
   const activeQuery = search.query;
 
+  const { data: apiData, isLoading } = useProducts({
+    search: activeQuery,
+    sort: activeSort === "newest" ? "newest" : undefined,
+  });
+
   // Filter products
   const filteredProducts = useMemo(() => {
     const filters: Partial<ProductFilters> = {
@@ -99,10 +105,14 @@ export function StorePage() {
       inStockOnly: activeInStock,
       query: activeQuery,
     };
-    const all = productService.all();
-    const filtered = applyFilters(all, filters);
+    const base =
+      apiData?.content && apiData.content.length > 0
+        ? apiData.content
+        : productService.all();
+    const filtered = applyFilters(base, filters);
     return sortProducts(filtered, activeSort);
   }, [
+    apiData,
     activeCategory,
     activeGender,
     activeCollection,
@@ -431,7 +441,13 @@ export function StorePage() {
             )}
 
             {/* Products Grid: 2 cols on mobile, 3 cols tablet, 4 cols desktop */}
-            {filteredProducts.length === 0 ? (
+            {isLoading && !apiData ? (
+              <div className="grid grid-cols-2 gap-x-3 gap-y-8 sm:gap-x-5 sm:gap-y-10 md:grid-cols-3 xl:grid-cols-4">
+                {Array.from({ length: 8 }).map((_, idx) => (
+                  <ProductCardSkeleton key={idx} />
+                ))}
+              </div>
+            ) : filteredProducts.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-20 text-center border border-dashed border-border rounded-sm p-8">
                 <Filter className="h-10 w-10 text-muted-foreground/40 mb-4" />
                 <h3 className="font-display text-xl font-medium text-foreground">No garments match your filters</h3>

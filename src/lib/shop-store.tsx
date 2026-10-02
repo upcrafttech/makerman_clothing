@@ -11,6 +11,9 @@ import { toast } from "sonner";
 
 import { defaultAddresses, seedOrders } from "@/data/content";
 import { productService } from "@/services";
+import { authStore } from "@/lib/auth-store";
+import { apiFetch } from "@/lib/api-client";
+import { getRegisteredProduct } from "@/lib/adapters";
 import type { Address, CartLine, Order, Product } from "@/types";
 
 const KEY = "makerman.v1";
@@ -89,7 +92,17 @@ export function ShopProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     try {
       const raw = window.localStorage.getItem(KEY);
-      if (raw) setState({ ...initial, ...(JSON.parse(raw) as PersistShape) });
+      const parsed = raw ? (JSON.parse(raw) as PersistShape) : initial;
+      const authUser = authStore.get();
+      if (authUser) {
+        const parts = (authUser.name || "").split(" ");
+        parsed.session = {
+          email: authUser.email,
+          firstName: parts[0] || "Valued",
+          lastName: parts.slice(1).join(" ") || "Client",
+        };
+      }
+      setState({ ...initial, ...parsed });
     } catch {
       /* ignore corrupt storage */
     }
@@ -238,16 +251,48 @@ export function ShopProvider({ children }: { children: ReactNode }) {
     [patch],
   );
 
+  const syncLocalCartToBackend = useCallback(async () => {
+    const token = authStore.getToken();
+    if (!token) return;
+    const active = state.cart.filter((l) => !l.savedForLater);
+    for (const line of active) {
+      const product =
+        getRegisteredProduct(line.productSlug) ?? productService.bySlug(line.productSlug);
+      if (!product) continue;
+      try {
+        await apiFetch("/cart/items", {
+          method: "POST",
+          token,
+          body: JSON.stringify({
+            productId: product.id,
+            quantity: line.quantity,
+            price: product.price,
+          }),
+        });
+      } catch (e) {
+        console.warn("Cart sync item warning:", e);
+      }
+    }
+  }, [state.cart]);
+
   const signIn = useCallback<ShopContextValue["signIn"]>(
-    (email, firstName) =>
+    (email, firstName) => {
+      const authUser = authStore.get();
+      const name = authUser?.name || firstName || "Valued Client";
+      const parts = name.split(" ");
       patch((prev) => ({
         ...prev,
-        session: { email, firstName: firstName ?? "Aarav", lastName: "Deshpande" },
-      })),
-    [patch],
+        session: { email, firstName: parts[0] || name, lastName: parts.slice(1).join(" ") || "" },
+      }));
+      syncLocalCartToBackend();
+    },
+    [patch, syncLocalCartToBackend],
   );
 
-  const signOut = useCallback(() => patch((prev) => ({ ...prev, session: null })), [patch]);
+  const signOut = useCallback(() => {
+    authStore.clear();
+    patch((prev) => ({ ...prev, session: null }));
+  }, [patch]);
 
   const value = useMemo<ShopContextValue>(() => {
     const active = state.cart.filter((l) => !l.savedForLater);
