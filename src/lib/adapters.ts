@@ -64,9 +64,18 @@ export function adaptProduct(api: ApiProduct): Product {
     ...(api.imageUrl && !api.imageUrls?.includes(api.imageUrl) ? [api.imageUrl] : []),
   ].filter(Boolean);
 
-  // If no images exist from backend, provide standard aesthetic fallback
+  // If no images exist from backend, provide refined image fallback
   if (images.length === 0) {
-    images.push("/makerman-hero-look.png");
+    const nameLower = api.name.toLowerCase();
+    if (nameLower.includes("shirt") || nameLower.includes("kurta")) {
+      images.push("/images/p-shirt-1.jpg", "/images/look-1.jpg");
+    } else if (nameLower.includes("pant") || nameLower.includes("trouser") || nameLower.includes("jean")) {
+      images.push("/images/p-trousers-1.jpg", "/images/p-jeans-1.jpg");
+    } else if (nameLower.includes("tshirt") || nameLower.includes("tee")) {
+      images.push("/images/p-tshirt-1.jpg");
+    } else {
+      images.push("/images/p-shirt-1.jpg", "/images/hero.jpg");
+    }
   }
 
   const meta = (key: string) =>

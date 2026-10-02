@@ -123,16 +123,21 @@ export function useProductReviews(productId: string | undefined, page = 0) {
     queryKey: ["reviews", productId, page],
     queryFn: async () => {
       if (!productId) return { content: [] as ApiReview[], totalElements: 0, totalPages: 0 };
-      const res = await apiFetch<{
-        data: {
-          content: ApiReview[];
-          totalElements?: number;
-          totalPages?: number;
-        };
-      }>(`/storefront/products/${productId}/reviews?page=${page}&size=10`);
-      return res.data ?? { content: [] };
+      try {
+        const res = await apiFetch<{
+          data: {
+            content: ApiReview[];
+            totalElements?: number;
+            totalPages?: number;
+          };
+        }>(`/storefront/products/${productId}/reviews?page=${page}&size=10`);
+        return res.data ?? { content: [] };
+      } catch {
+        return { content: [] as ApiReview[], totalElements: 0, totalPages: 0 };
+      }
     },
     enabled: Boolean(productId),
+    retry: false,
   });
 }
 
