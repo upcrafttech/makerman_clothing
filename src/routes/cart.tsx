@@ -8,6 +8,7 @@ import { cartTotals, formatINR, FREE_SHIPPING_THRESHOLD } from "@/lib/format";
 import { useShop } from "@/lib/shop-store";
 import { cn } from "@/lib/utils";
 import { productService } from "@/services";
+import { useProducts } from "@/hooks/use-api";
 
 export const Route = createFileRoute("/cart")({
   head: () => ({
@@ -21,6 +22,7 @@ export const Route = createFileRoute("/cart")({
 });
 
 export function CartPage() {
+  const { data: _catalog } = useProducts();
   const {
     cart,
     subtotal,

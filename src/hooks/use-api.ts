@@ -325,3 +325,38 @@ export function useCreateOrder() {
     },
   });
 }
+
+/* ── Payments (Razorpay) ───────────────────── */
+export interface RazorpayOrderResponse {
+  razorpayOrderId: string;
+  amount: number;
+  currency: string;
+  keyId: string;
+  internalOrderId?: string;
+}
+
+export function useCreateRazorpayOrder() {
+  return useMutation({
+    mutationFn: (body: { amount: number; receipt?: string; platformOrderId?: string }) =>
+      apiFetch<RazorpayOrderResponse>("/payment/create-order", {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
+  });
+}
+
+export function useVerifyRazorpayPayment() {
+  return useMutation({
+    mutationFn: (body: {
+      razorpayOrderId: string;
+      razorpayPaymentId: string;
+      razorpaySignature: string;
+      platformOrderId?: string;
+    }) =>
+      apiFetch<{ message: string }>("/payment/verify", {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
+  });
+}
+

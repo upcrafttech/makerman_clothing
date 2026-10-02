@@ -6,6 +6,7 @@ import { ProductCard } from "@/components/product/product-card";
 import { Button } from "@/components/ui/button";
 import { useShop } from "@/lib/shop-store";
 import { productService } from "@/services";
+import { useProducts, useApiWishlist } from "@/hooks/use-api";
 
 export const Route = createFileRoute("/favorites")({
   head: () => ({
@@ -20,6 +21,8 @@ export const Route = createFileRoute("/favorites")({
 
 export function FavoritesPage() {
   const { wishlist, moveWishlistToCart } = useShop();
+  const { data: _catalog } = useProducts();
+  const { data: _apiWishlist } = useApiWishlist();
 
   const favoriteProducts = wishlist
     .map((slug) => productService.bySlug(slug))
