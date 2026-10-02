@@ -10,36 +10,19 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as AboutRouteImport } from './routes/about'
 import { Route as AccountRouteImport } from './routes/account'
 import { Route as CartRouteImport } from './routes/cart'
 import { Route as CheckoutRouteImport } from './routes/checkout'
-import { Route as CollectionsRouteImport } from './routes/collections'
-import { Route as CompareRouteImport } from './routes/compare'
 import { Route as ContactRouteImport } from './routes/contact'
-import { Route as CookiesRouteImport } from './routes/cookies'
-import { Route as FaqRouteImport } from './routes/faq'
-import { Route as JournalRouteImport } from './routes/journal'
-import { Route as PrivacyRouteImport } from './routes/privacy'
-import { Route as ReturnsRouteImport } from './routes/returns'
-import { Route as ShippingRouteImport } from './routes/shipping'
+import { Route as FavoritesRouteImport } from './routes/favorites'
 import { Route as ShopRouteImport } from './routes/shop'
-import { Route as SizeGuideRouteImport } from './routes/size-guide'
-import { Route as StyleQuizRouteImport } from './routes/style-quiz'
-import { Route as TermsRouteImport } from './routes/terms'
+import { Route as StoreRouteImport } from './routes/store'
 import { Route as WishlistRouteImport } from './routes/wishlist'
-import { Route as CollectionsSlugRouteImport } from './routes/collections.$slug'
-import { Route as JournalSlugRouteImport } from './routes/journal.$slug'
 import { Route as ProductSlugRouteImport } from './routes/product.$slug'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AboutRoute = AboutRouteImport.update({
-  id: '/about',
-  path: '/about',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AccountRoute = AccountRouteImport.update({
@@ -57,49 +40,14 @@ const CheckoutRoute = CheckoutRouteImport.update({
   path: '/checkout',
   getParentRoute: () => rootRouteImport,
 } as any)
-const CollectionsRoute = CollectionsRouteImport.update({
-  id: '/collections',
-  path: '/collections',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CompareRoute = CompareRouteImport.update({
-  id: '/compare',
-  path: '/compare',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ContactRoute = ContactRouteImport.update({
   id: '/contact',
   path: '/contact',
   getParentRoute: () => rootRouteImport,
 } as any)
-const CookiesRoute = CookiesRouteImport.update({
-  id: '/cookies',
-  path: '/cookies',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const FaqRoute = FaqRouteImport.update({
-  id: '/faq',
-  path: '/faq',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const JournalRoute = JournalRouteImport.update({
-  id: '/journal',
-  path: '/journal',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PrivacyRoute = PrivacyRouteImport.update({
-  id: '/privacy',
-  path: '/privacy',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ReturnsRoute = ReturnsRouteImport.update({
-  id: '/returns',
-  path: '/returns',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ShippingRoute = ShippingRouteImport.update({
-  id: '/shipping',
-  path: '/shipping',
+const FavoritesRoute = FavoritesRouteImport.update({
+  id: '/favorites',
+  path: '/favorites',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ShopRoute = ShopRouteImport.update({
@@ -107,35 +55,15 @@ const ShopRoute = ShopRouteImport.update({
   path: '/shop',
   getParentRoute: () => rootRouteImport,
 } as any)
-const SizeGuideRoute = SizeGuideRouteImport.update({
-  id: '/size-guide',
-  path: '/size-guide',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const StyleQuizRoute = StyleQuizRouteImport.update({
-  id: '/style-quiz',
-  path: '/style-quiz',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const TermsRoute = TermsRouteImport.update({
-  id: '/terms',
-  path: '/terms',
+const StoreRoute = StoreRouteImport.update({
+  id: '/store',
+  path: '/store',
   getParentRoute: () => rootRouteImport,
 } as any)
 const WishlistRoute = WishlistRouteImport.update({
   id: '/wishlist',
   path: '/wishlist',
   getParentRoute: () => rootRouteImport,
-} as any)
-const CollectionsSlugRoute = CollectionsSlugRouteImport.update({
-  id: '/$slug',
-  path: '/$slug',
-  getParentRoute: () => CollectionsRoute,
-} as any)
-const JournalSlugRoute = JournalSlugRouteImport.update({
-  id: '/$slug',
-  path: '/$slug',
-  getParentRoute: () => JournalRoute,
 } as any)
 const ProductSlugRoute = ProductSlugRouteImport.update({
   id: '/product/$slug',
@@ -145,171 +73,89 @@ const ProductSlugRoute = ProductSlugRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/about': typeof AboutRoute
   '/account': typeof AccountRoute
   '/cart': typeof CartRoute
   '/checkout': typeof CheckoutRoute
-  '/collections': typeof CollectionsRouteWithChildren
-  '/compare': typeof CompareRoute
   '/contact': typeof ContactRoute
-  '/cookies': typeof CookiesRoute
-  '/faq': typeof FaqRoute
-  '/journal': typeof JournalRouteWithChildren
-  '/privacy': typeof PrivacyRoute
-  '/returns': typeof ReturnsRoute
-  '/shipping': typeof ShippingRoute
+  '/favorites': typeof FavoritesRoute
   '/shop': typeof ShopRoute
-  '/size-guide': typeof SizeGuideRoute
-  '/style-quiz': typeof StyleQuizRoute
-  '/terms': typeof TermsRoute
+  '/store': typeof StoreRoute
   '/wishlist': typeof WishlistRoute
-  '/collections/$slug': typeof CollectionsSlugRoute
-  '/journal/$slug': typeof JournalSlugRoute
   '/product/$slug': typeof ProductSlugRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/about': typeof AboutRoute
   '/account': typeof AccountRoute
   '/cart': typeof CartRoute
   '/checkout': typeof CheckoutRoute
-  '/collections': typeof CollectionsRouteWithChildren
-  '/compare': typeof CompareRoute
   '/contact': typeof ContactRoute
-  '/cookies': typeof CookiesRoute
-  '/faq': typeof FaqRoute
-  '/journal': typeof JournalRouteWithChildren
-  '/privacy': typeof PrivacyRoute
-  '/returns': typeof ReturnsRoute
-  '/shipping': typeof ShippingRoute
+  '/favorites': typeof FavoritesRoute
   '/shop': typeof ShopRoute
-  '/size-guide': typeof SizeGuideRoute
-  '/style-quiz': typeof StyleQuizRoute
-  '/terms': typeof TermsRoute
+  '/store': typeof StoreRoute
   '/wishlist': typeof WishlistRoute
-  '/collections/$slug': typeof CollectionsSlugRoute
-  '/journal/$slug': typeof JournalSlugRoute
   '/product/$slug': typeof ProductSlugRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/about': typeof AboutRoute
   '/account': typeof AccountRoute
   '/cart': typeof CartRoute
   '/checkout': typeof CheckoutRoute
-  '/collections': typeof CollectionsRouteWithChildren
-  '/compare': typeof CompareRoute
   '/contact': typeof ContactRoute
-  '/cookies': typeof CookiesRoute
-  '/faq': typeof FaqRoute
-  '/journal': typeof JournalRouteWithChildren
-  '/privacy': typeof PrivacyRoute
-  '/returns': typeof ReturnsRoute
-  '/shipping': typeof ShippingRoute
+  '/favorites': typeof FavoritesRoute
   '/shop': typeof ShopRoute
-  '/size-guide': typeof SizeGuideRoute
-  '/style-quiz': typeof StyleQuizRoute
-  '/terms': typeof TermsRoute
+  '/store': typeof StoreRoute
   '/wishlist': typeof WishlistRoute
-  '/collections/$slug': typeof CollectionsSlugRoute
-  '/journal/$slug': typeof JournalSlugRoute
   '/product/$slug': typeof ProductSlugRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/about'
     | '/account'
     | '/cart'
     | '/checkout'
-    | '/collections'
-    | '/compare'
     | '/contact'
-    | '/cookies'
-    | '/faq'
-    | '/journal'
-    | '/privacy'
-    | '/returns'
-    | '/shipping'
+    | '/favorites'
     | '/shop'
-    | '/size-guide'
-    | '/style-quiz'
-    | '/terms'
+    | '/store'
     | '/wishlist'
-    | '/collections/$slug'
-    | '/journal/$slug'
     | '/product/$slug'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/about'
     | '/account'
     | '/cart'
     | '/checkout'
-    | '/collections'
-    | '/compare'
     | '/contact'
-    | '/cookies'
-    | '/faq'
-    | '/journal'
-    | '/privacy'
-    | '/returns'
-    | '/shipping'
+    | '/favorites'
     | '/shop'
-    | '/size-guide'
-    | '/style-quiz'
-    | '/terms'
+    | '/store'
     | '/wishlist'
-    | '/collections/$slug'
-    | '/journal/$slug'
     | '/product/$slug'
   id:
     | '__root__'
     | '/'
-    | '/about'
     | '/account'
     | '/cart'
     | '/checkout'
-    | '/collections'
-    | '/compare'
     | '/contact'
-    | '/cookies'
-    | '/faq'
-    | '/journal'
-    | '/privacy'
-    | '/returns'
-    | '/shipping'
+    | '/favorites'
     | '/shop'
-    | '/size-guide'
-    | '/style-quiz'
-    | '/terms'
+    | '/store'
     | '/wishlist'
-    | '/collections/$slug'
-    | '/journal/$slug'
     | '/product/$slug'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AboutRoute: typeof AboutRoute
   AccountRoute: typeof AccountRoute
   CartRoute: typeof CartRoute
   CheckoutRoute: typeof CheckoutRoute
-  CollectionsRoute: typeof CollectionsRouteWithChildren
-  CompareRoute: typeof CompareRoute
   ContactRoute: typeof ContactRoute
-  CookiesRoute: typeof CookiesRoute
-  FaqRoute: typeof FaqRoute
-  JournalRoute: typeof JournalRouteWithChildren
-  PrivacyRoute: typeof PrivacyRoute
-  ReturnsRoute: typeof ReturnsRoute
-  ShippingRoute: typeof ShippingRoute
+  FavoritesRoute: typeof FavoritesRoute
   ShopRoute: typeof ShopRoute
-  SizeGuideRoute: typeof SizeGuideRoute
-  StyleQuizRoute: typeof StyleQuizRoute
-  TermsRoute: typeof TermsRoute
+  StoreRoute: typeof StoreRoute
   WishlistRoute: typeof WishlistRoute
   ProductSlugRoute: typeof ProductSlugRoute
 }
@@ -321,13 +167,6 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/about': {
-      id: '/about'
-      path: '/about'
-      fullPath: '/about'
-      preLoaderRoute: typeof AboutRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/account': {
@@ -351,20 +190,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CheckoutRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/collections': {
-      id: '/collections'
-      path: '/collections'
-      fullPath: '/collections'
-      preLoaderRoute: typeof CollectionsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/compare': {
-      id: '/compare'
-      path: '/compare'
-      fullPath: '/compare'
-      preLoaderRoute: typeof CompareRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/contact': {
       id: '/contact'
       path: '/contact'
@@ -372,46 +197,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ContactRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/cookies': {
-      id: '/cookies'
-      path: '/cookies'
-      fullPath: '/cookies'
-      preLoaderRoute: typeof CookiesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/faq': {
-      id: '/faq'
-      path: '/faq'
-      fullPath: '/faq'
-      preLoaderRoute: typeof FaqRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/journal': {
-      id: '/journal'
-      path: '/journal'
-      fullPath: '/journal'
-      preLoaderRoute: typeof JournalRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/privacy': {
-      id: '/privacy'
-      path: '/privacy'
-      fullPath: '/privacy'
-      preLoaderRoute: typeof PrivacyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/returns': {
-      id: '/returns'
-      path: '/returns'
-      fullPath: '/returns'
-      preLoaderRoute: typeof ReturnsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/shipping': {
-      id: '/shipping'
-      path: '/shipping'
-      fullPath: '/shipping'
-      preLoaderRoute: typeof ShippingRouteImport
+    '/favorites': {
+      id: '/favorites'
+      path: '/favorites'
+      fullPath: '/favorites'
+      preLoaderRoute: typeof FavoritesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/shop': {
@@ -421,25 +211,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ShopRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/size-guide': {
-      id: '/size-guide'
-      path: '/size-guide'
-      fullPath: '/size-guide'
-      preLoaderRoute: typeof SizeGuideRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/style-quiz': {
-      id: '/style-quiz'
-      path: '/style-quiz'
-      fullPath: '/style-quiz'
-      preLoaderRoute: typeof StyleQuizRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/terms': {
-      id: '/terms'
-      path: '/terms'
-      fullPath: '/terms'
-      preLoaderRoute: typeof TermsRouteImport
+    '/store': {
+      id: '/store'
+      path: '/store'
+      fullPath: '/store'
+      preLoaderRoute: typeof StoreRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/wishlist': {
@@ -448,20 +224,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/wishlist'
       preLoaderRoute: typeof WishlistRouteImport
       parentRoute: typeof rootRouteImport
-    }
-    '/collections/$slug': {
-      id: '/collections/$slug'
-      path: '/$slug'
-      fullPath: '/collections/$slug'
-      preLoaderRoute: typeof CollectionsSlugRouteImport
-      parentRoute: typeof CollectionsRoute
-    }
-    '/journal/$slug': {
-      id: '/journal/$slug'
-      path: '/$slug'
-      fullPath: '/journal/$slug'
-      preLoaderRoute: typeof JournalSlugRouteImport
-      parentRoute: typeof JournalRoute
     }
     '/product/$slug': {
       id: '/product/$slug'
@@ -473,48 +235,15 @@ declare module '@tanstack/react-router' {
   }
 }
 
-interface CollectionsRouteChildren {
-  CollectionsSlugRoute: typeof CollectionsSlugRoute
-}
-
-const CollectionsRouteChildren: CollectionsRouteChildren = {
-  CollectionsSlugRoute: CollectionsSlugRoute,
-}
-
-const CollectionsRouteWithChildren = CollectionsRoute._addFileChildren(
-  CollectionsRouteChildren,
-)
-
-interface JournalRouteChildren {
-  JournalSlugRoute: typeof JournalSlugRoute
-}
-
-const JournalRouteChildren: JournalRouteChildren = {
-  JournalSlugRoute: JournalSlugRoute,
-}
-
-const JournalRouteWithChildren =
-  JournalRoute._addFileChildren(JournalRouteChildren)
-
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  AboutRoute: AboutRoute,
   AccountRoute: AccountRoute,
   CartRoute: CartRoute,
   CheckoutRoute: CheckoutRoute,
-  CollectionsRoute: CollectionsRouteWithChildren,
-  CompareRoute: CompareRoute,
   ContactRoute: ContactRoute,
-  CookiesRoute: CookiesRoute,
-  FaqRoute: FaqRoute,
-  JournalRoute: JournalRouteWithChildren,
-  PrivacyRoute: PrivacyRoute,
-  ReturnsRoute: ReturnsRoute,
-  ShippingRoute: ShippingRoute,
+  FavoritesRoute: FavoritesRoute,
   ShopRoute: ShopRoute,
-  SizeGuideRoute: SizeGuideRoute,
-  StyleQuizRoute: StyleQuizRoute,
-  TermsRoute: TermsRoute,
+  StoreRoute: StoreRoute,
   WishlistRoute: WishlistRoute,
   ProductSlugRoute: ProductSlugRoute,
 }

@@ -1,78 +1,75 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   ArrowRight,
-  CheckCircle2,
-  ChevronLeft,
+  Check,
   ChevronRight,
+  Clock,
   Compass,
   Feather,
   Plus,
-  RefreshCw,
+  RotateCcw,
   ShieldCheck,
+  ShoppingBag,
   Sparkles,
-  Star,
+  Truck,
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
 import { ProductCard } from "@/components/product/product-card";
 import { Button } from "@/components/ui/button";
-import { reviews } from "@/data/content";
 import { formatINR } from "@/lib/format";
 import { useShop } from "@/lib/shop-store";
 import { cn } from "@/lib/utils";
-import { collectionService, productService } from "@/services";
+import { productService } from "@/services";
 
 export const Route = createFileRoute("/")({
+  head: () => ({
+    meta: [
+      { title: "MAKERMAN — Feeling Happiness | Premium Clothing" },
+      {
+        name: "description",
+        content:
+          "Makerman crafts refined modern essentials, tailored silhouettes, and premium fabrics. Designed for genuine comfort and everyday distinction. Feeling Happiness.",
+      },
+      { property: "og:title", content: "MAKERMAN — Feeling Happiness" },
+    ],
+  }),
   component: HomePage,
 });
 
 export function HomePage() {
   const { addToCart, setQuickView } = useShop();
-  const [activeLookIndex, setActiveLookIndex] = useState(0);
-  const [carouselIndex, setCarouselIndex] = useState(0);
   const [newsletterEmail, setNewsletterEmail] = useState("");
-  const [subscribed, setSubscribed] = useState(false);
+  const [activeHotspot, setActiveHotspot] = useState<string | null>(null);
 
-  const newArrivals = productService.newArrivals(8);
-  const bestSellers = productService.bestSellers(8);
-  const featuredCollection = collectionService.bySlug("studio-tailoring") ?? collectionService.all()[0]!;
+  const newArrivals = productService.newArrivals(6);
 
-  const handleSubscribe = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newsletterEmail.includes("@")) {
-      toast.error("Please enter a valid email address.");
-      return;
-    }
-    setSubscribed(true);
-    toast.success("Thank you for joining the AVELOR register.");
-  };
-
-  // Hotspot definitions for Shop The Look
+  // Look pieces for "Shop The Look"
   const lookHotspots = [
     {
       id: "h1",
-      slug: "atelier-cotton-overshirt",
-      title: "Atelier Cotton Overshirt",
-      price: 4290,
-      x: "52%",
-      y: "32%",
+      slug: "warden-twill-overshirt",
+      title: "Warden Twill Overshirt",
+      price: 3890,
+      x: "54%",
+      y: "35%",
     },
     {
       id: "h2",
       slug: "atlas-heavyweight-tee",
       title: "Atlas Heavyweight Tee",
-      price: 1890,
-      x: "46%",
+      price: 1799,
+      x: "48%",
       y: "48%",
     },
     {
       id: "h3",
-      slug: "straight-column-denim",
-      title: "Straight Column Denim",
+      slug: "column-selvedge-jean",
+      title: "Column Selvedge Jean",
       price: 4990,
-      x: "50%",
-      y: "74%",
+      x: "52%",
+      y: "75%",
     },
   ];
 
@@ -83,48 +80,74 @@ export function HomePage() {
         addToCart(p.slug, p.sizes[0] ?? "M", p.colors[0]?.name ?? "Natural", 1);
       }
     });
-    toast.success("Complete outfit added to your shopping bag.");
+    toast.success("Complete look added to your bag", {
+      description: "3 garments added to your shopping bag.",
+    });
+  };
+
+  const handleNewsletter = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!/^\S+@\S+\.\S+$/.test(newsletterEmail)) {
+      toast.error("Please enter a valid email address");
+      return;
+    }
+    toast.success("Welcome to Makerman World", {
+      description: "You are now registered for private drops and new arrivals.",
+    });
+    setNewsletterEmail("");
   };
 
   return (
-    <div className="flex flex-col">
-      {/* 1. CINEMATIC EDITORIAL HERO */}
-      <section className="relative min-h-[85vh] sm:min-h-[90vh] flex items-end justify-start bg-secondary overflow-hidden">
+    <div className="flex flex-col bg-background selection:bg-ink selection:text-white">
+      {/* ==========================================================
+          SECTION 1 — CINEMATIC EDITORIAL HERO
+          ========================================================== */}
+      <section className="relative min-h-[90vh] sm:min-h-[94vh] flex items-end justify-start overflow-hidden bg-[#161616]">
+        {/* Hero Background Image with subtle scale */}
         <img
           src="/images/hero.jpg"
-          alt="AVELOR New Season Collection"
-          className="absolute inset-0 h-full w-full object-cover object-center brightness-[0.88] contrast-[1.02]"
+          alt="Makerman Autumn / Winter Campaign"
+          className="absolute inset-0 h-full w-full object-cover object-[center_28%] brightness-[0.84] contrast-[1.05] transition-transform duration-1000 ease-out hover:scale-105"
+          loading="eager"
+          decoding="async"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/25 to-transparent" />
+        {/* Refined gradient overlay */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-black/10" />
 
-        <div className="container-page relative z-10 pb-12 pt-32 sm:pb-20 text-white">
-          <div className="max-w-2xl">
-            <span className="eyebrow tracking-[0.25em] text-white/80 uppercase mb-3 inline-block">
-              Autumn / Winter 2026
-            </span>
-            <h1 className="font-display text-4xl sm:text-6xl md:text-7xl font-normal leading-[1.05] tracking-tight text-white">
-              Designed for the everyday.
+        <div className="container-page relative z-10 pb-14 pt-32 sm:pb-24 text-white">
+          <div className="max-w-2xl animate-in fade-in slide-in-from-bottom-6 duration-700">
+            {/* Small golden bird highlight dot */}
+            <div className="flex items-center gap-2 mb-3">
+              <span className="h-2 w-2 rounded-full bg-amber-500 inline-block animate-pulse" />
+              <p className="text-[0.6875rem] font-semibold uppercase tracking-[0.24em] text-white/90">
+                MAKERMAN ATELIER
+              </p>
+            </div>
+
+            <h1 className="font-display text-4xl sm:text-6xl md:text-7xl font-normal leading-[1.08] tracking-tight text-white drop-shadow-xs">
+              Feeling Happiness.
             </h1>
-            <p className="mt-4 text-sm sm:text-base md:text-lg text-white/85 max-w-xl font-light leading-relaxed">
-              Modern essentials, refined through considered materials, architectural cuts, and timeless silhouettes.
+
+            <p className="mt-4 text-xs sm:text-base text-white/85 max-w-lg font-light leading-relaxed">
+              Refined clothing crafted with durable Indian fabrics, architectural cuts, and timeless proportions. Made to feel as good as it looks.
             </p>
 
             <div className="mt-8 flex flex-wrap gap-3 sm:gap-4">
               <Button
                 asChild
-                className="h-12 sm:h-13 px-8 text-xs uppercase tracking-[0.14em] font-medium bg-white text-ink hover:bg-white/90"
+                className="h-12 sm:h-13 px-8 text-xs font-semibold uppercase tracking-[0.16em] bg-white text-[#171717] hover:bg-white/90 rounded-sm shadow-md"
               >
-                <Link to="/collections/$slug" params={{ slug: "new-arrivals" }}>
-                  Shop New Arrivals
+                <Link to="/store" search={{ gender: "men" }}>
+                  Shop Men
                 </Link>
               </Button>
               <Button
                 asChild
                 variant="outline"
-                className="h-12 sm:h-13 px-8 text-xs uppercase tracking-[0.14em] font-medium text-white border-white/40 hover:bg-white/10 hover:border-white"
+                className="h-12 sm:h-13 px-8 text-xs font-semibold uppercase tracking-[0.16em] text-white border-white/50 hover:bg-white/15 hover:border-white rounded-sm"
               >
-                <Link to="/collections/$slug" params={{ slug: "studio-tailoring" }}>
-                  Explore Collection
+                <Link to="/store" search={{ gender: "women" }}>
+                  Shop Women
                 </Link>
               </Button>
             </div>
@@ -132,69 +155,75 @@ export function HomePage() {
         </div>
       </section>
 
-      {/* 2. BRAND PROMISE PILLARS */}
-      <section className="border-b border-border bg-background py-8 sm:py-10">
-        <div className="container-page">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8">
-            {[
-              {
-                icon: Feather,
-                title: "Thoughtful Materials",
-                desc: "Long-staple cotton, natural wool & washed linens.",
-              },
-              {
-                icon: Compass,
-                title: "Considered Design",
-                desc: "Proportions tested for natural drape and movement.",
-              },
-              {
-                icon: ShieldCheck,
-                title: "Made to Last",
-                desc: "Dense weights and reinforced seam construction.",
-              },
-              {
-                icon: RefreshCw,
-                title: "Easy 14-Day Returns",
-                desc: "Complimentary doorstep pickup across India.",
-              },
-            ].map((pillar) => (
-              <div key={pillar.title} className="flex flex-col items-start text-left">
-                <pillar.icon className="h-5 w-5 text-accent mb-2.5" strokeWidth={1.4} />
-                <h2 className="font-display text-sm font-medium text-foreground">{pillar.title}</h2>
-                <p className="mt-1 text-xs text-muted-foreground leading-relaxed">{pillar.desc}</p>
-              </div>
-            ))}
+      {/* ==========================================================
+          SECTION 2 — BRAND STATEMENT
+          ========================================================== */}
+      <section className="border-b border-border/80 bg-[#FAF8F5] py-16 sm:py-24 text-center">
+        <div className="container-page max-w-3xl mx-auto">
+          {/* Subtle logo accent line */}
+          <div className="flex items-center justify-center gap-2 mb-6">
+            <span className="h-[1px] w-8 bg-amber-500/80" />
+            <span className="text-[0.625rem] uppercase tracking-[0.24em] font-semibold text-muted-foreground">
+              OUR PHILOSOPHY
+            </span>
+            <span className="h-[1px] w-8 bg-amber-500/80" />
           </div>
+
+          <h2 className="font-display text-3xl sm:text-4xl md:text-5xl font-normal text-foreground leading-[1.2] tracking-tight">
+            “Clothing that feels as good as it looks.”
+          </h2>
+
+          <p className="mt-6 text-xs sm:text-sm md:text-base text-muted-foreground leading-relaxed font-light max-w-xl mx-auto">
+            At Makerman, we reject fleeting trends. We focus on heavy long-staple cottons, balanced drapes, and precise tailoring so every garment brings lasting ease, confidence, and genuine everyday happiness.
+          </p>
         </div>
       </section>
 
-      {/* 3. NEW ARRIVALS CAROUSEL */}
+      {/* ==========================================================
+          SECTION 3 — NEW ARRIVALS
+          ========================================================== */}
       <section className="section-y bg-background">
         <div className="container-page">
-          <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-8 md:mb-10 gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-8 md:mb-12 gap-4 border-b border-border/60 pb-5">
             <div>
-              <p className="eyebrow text-subtle">Recent Additions</p>
-              <h2 className="mt-1.5 font-display text-2xl sm:text-4xl">New Arrivals</h2>
+              <p className="eyebrow text-amber-600 font-semibold tracking-widest">
+                Fresh From Studio
+              </p>
+              <h2 className="mt-1 font-display text-2xl sm:text-4xl text-foreground font-normal">
+                New Arrivals
+              </h2>
             </div>
-            <div className="flex items-center gap-3">
-              <Button asChild variant="subtle" size="sm" className="hidden sm:inline-flex">
-                <Link to="/collections/$slug" params={{ slug: "new-arrivals" }}>
-                  View All ({newArrivals.length}) <ArrowRight className="h-3.5 w-3.5 ml-1" />
-                </Link>
-              </Button>
+            <div>
+              <Link
+                to="/store"
+                search={{ collection: "new-arrivals" }}
+                className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-foreground hover:text-amber-600 transition-colors"
+              >
+                <span>Explore All</span>
+                <ArrowRight className="h-3.5 w-3.5" />
+              </Link>
             </div>
           </div>
 
-          {/* Grid layout */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
-            {newArrivals.slice(0, 8).map((product, idx) => (
-              <ProductCard key={product.slug} product={product} priority={idx < 4} />
+          {/* Product Grid: 2 columns on mobile, 4 columns on desktop */}
+          <div className="grid grid-cols-2 gap-x-3 gap-y-8 sm:gap-x-6 sm:gap-y-12 lg:grid-cols-3 xl:grid-cols-4">
+            {newArrivals.map((product, idx) => (
+              <ProductCard
+                key={product.slug}
+                product={product}
+                priority={idx < 4}
+              />
             ))}
           </div>
 
+          {/* Mobile view all CTA button */}
           <div className="mt-8 text-center sm:hidden">
-            <Button asChild variant="outline" className="w-full h-11 text-xs uppercase tracking-wider">
-              <Link to="/collections/$slug" params={{ slug: "new-arrivals" }}>
+            <Button
+              asChild
+              variant="outline"
+              className="w-full h-12 text-xs font-semibold uppercase tracking-wider border-border"
+            >
+              <Link to="/store" search={{ collection: "new-arrivals" }}>
                 View All New Arrivals ({newArrivals.length})
               </Link>
             </Button>
@@ -202,41 +231,74 @@ export function HomePage() {
         </div>
       </section>
 
-      {/* 4. FEATURED COLLECTION SPLIT BANNER */}
-      <section className="bg-secondary/40 border-y border-border">
-        <div className="container-page py-12 md:py-20">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-center">
-            <div className="relative aspect-4/5 overflow-hidden bg-secondary">
+      {/* ==========================================================
+          SECTION 4 — CATEGORY EDIT (MEN & WOMEN)
+          ========================================================== */}
+      <section className="bg-[#FAF8F5] border-y border-border/80 py-14 sm:py-20">
+        <div className="container-page">
+          <div className="text-center max-w-xl mx-auto mb-10">
+            <p className="eyebrow text-amber-600 font-semibold tracking-widest">
+              Curated Wardrobes
+            </p>
+            <h2 className="mt-1 font-display text-2xl sm:text-4xl text-foreground font-normal">
+              Category Edit
+            </h2>
+            <p className="mt-2 text-xs text-muted-foreground">
+              Distinct cuts and tailored blocks built for everyday wear.
+            </p>
+          </div>
+
+          {/* 2-Column Desktop, Stacked Mobile */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
+            {/* Men's Category */}
+            <div className="group relative aspect-[4/5] sm:aspect-[3/4] overflow-hidden bg-secondary rounded-sm">
               <img
-                src={featuredCollection.image}
-                alt={featuredCollection.title}
-                className="h-full w-full object-cover"
+                src="/images/p-shirt-1.jpg"
+                alt="Makerman Men's Wardrobe"
+                className="h-full w-full object-cover object-center transition-transform duration-700 ease-out group-hover:scale-105"
+                loading="lazy"
               />
-              <div className="absolute top-4 left-4">
-                <span className="bg-background/90 backdrop-blur-xs px-3 py-1 text-[11px] uppercase tracking-widest font-medium">
-                  Featured Series
-                </span>
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+              <div className="absolute inset-x-0 bottom-0 p-6 sm:p-10 text-white">
+                <p className="text-[0.6875rem] uppercase tracking-widest text-white/80 font-medium mb-1">
+                  Tailored & Relaxed
+                </p>
+                <h3 className="font-display text-2xl sm:text-4xl text-white font-normal mb-4">
+                  Men's Collection
+                </h3>
+                <Button
+                  asChild
+                  className="h-11 px-6 text-xs font-semibold uppercase tracking-[0.14em] bg-white text-ink hover:bg-white/90 rounded-sm shadow-sm"
+                >
+                  <Link to="/store" search={{ gender: "men" }}>
+                    Shop Men
+                  </Link>
+                </Button>
               </div>
             </div>
 
-            <div className="max-w-lg space-y-6">
-              <span className="eyebrow text-subtle">Collection Study 04</span>
-              <h2 className="font-display text-3xl sm:text-5xl font-normal leading-tight">
-                {featuredCollection.title}
-              </h2>
-              <p className="text-sm sm:text-base text-muted-foreground leading-relaxed">
-                {featuredCollection.description} Designed for quiet distinction with unlined shoulders, structured drapery, and a palette rooted in chalk, sand, and charcoal.
-              </p>
-
-              <div className="pt-2 flex flex-wrap gap-4">
-                <Button asChild className="h-12 px-7 text-xs uppercase tracking-[0.12em]">
-                  <Link to="/collections/$slug" params={{ slug: featuredCollection.slug }}>
-                    Explore Series
-                  </Link>
-                </Button>
-                <Button asChild variant="outline" className="h-12 px-7 text-xs uppercase tracking-[0.12em]">
-                  <Link to="/shop" search={{ collection: featuredCollection.slug } as never}>
-                    View Lookbook
+            {/* Women's Category */}
+            <div className="group relative aspect-[4/5] sm:aspect-[3/4] overflow-hidden bg-secondary rounded-sm">
+              <img
+                src="/images/p-dress-1.jpg"
+                alt="Makerman Women's Wardrobe"
+                className="h-full w-full object-cover object-center transition-transform duration-700 ease-out group-hover:scale-105"
+                loading="lazy"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+              <div className="absolute inset-x-0 bottom-0 p-6 sm:p-10 text-white">
+                <p className="text-[0.6875rem] uppercase tracking-widest text-white/80 font-medium mb-1">
+                  Fluid & Considered
+                </p>
+                <h3 className="font-display text-2xl sm:text-4xl text-white font-normal mb-4">
+                  Women's Collection
+                </h3>
+                <Button
+                  asChild
+                  className="h-11 px-6 text-xs font-semibold uppercase tracking-[0.14em] bg-white text-ink hover:bg-white/90 rounded-sm shadow-sm"
+                >
+                  <Link to="/store" search={{ gender: "women" }}>
+                    Shop Women
                   </Link>
                 </Button>
               </div>
@@ -245,339 +307,294 @@ export function HomePage() {
         </div>
       </section>
 
-      {/* 5. SHOP THE LOOK (INTERACTIVE HOTSPOTS) */}
+      {/* ==========================================================
+          SECTION 5 — CAMPAIGN / STORY (THE MAKERMAN WAY)
+          ========================================================== */}
       <section className="section-y bg-background">
         <div className="container-page">
-          <div className="text-center max-w-xl mx-auto mb-10 md:mb-14">
-            <p className="eyebrow text-subtle">Editorial Curation</p>
-            <h2 className="mt-2 font-display text-3xl sm:text-4xl">Shop The Look</h2>
-            <p className="mt-2 text-xs sm:text-sm text-muted-foreground">
-              A balanced uniform cut for daily versatility. Tap any hotspot to inspect or add to your bag.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center max-w-6xl mx-auto">
-            {/* Interactive Image */}
-            <div className="lg:col-span-7 relative aspect-4/5 overflow-hidden bg-secondary">
-              <img
-                src="/images/look-1.jpg"
-                alt="Editorial outfit composition"
-                className="h-full w-full object-cover"
-              />
-
-              {/* Hotspot Markers */}
-              {lookHotspots.map((spot, idx) => (
-                <div
-                  key={spot.id}
-                  className="absolute -translate-x-1/2 -translate-y-1/2 group/spot"
-                  style={{ left: spot.x, top: spot.y }}
-                >
-                  <button
-                    type="button"
-                    onClick={() => setActiveLookIndex(idx)}
-                    aria-label={`Inspect ${spot.title}`}
-                    className={cn(
-                      "relative grid h-8 w-8 place-items-center rounded-full bg-background text-foreground shadow-lift transition-transform",
-                      activeLookIndex === idx ? "scale-110 ring-2 ring-ink" : "hover:scale-110",
-                    )}
-                  >
-                    <Plus className="h-4 w-4" />
-                    <span className="absolute inset-0 rounded-full animate-ping bg-background/50 pointer-events-none -z-10" />
-                  </button>
-
-                  {/* Desktop Hover Tooltip */}
-                  <div className="hidden sm:block pointer-events-none absolute left-full ml-3 top-1/2 -translate-y-1/2 w-48 bg-background/95 backdrop-blur-xs p-3 text-left shadow-lift border border-border opacity-0 group-hover/spot:opacity-100 transition-opacity z-20">
-                    <p className="text-xs font-medium truncate">{spot.title}</p>
-                    <p className="num text-xs text-muted-foreground mt-0.5">{formatINR(spot.price)}</p>
-                  </div>
-                </div>
-              ))}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-center">
+            {/* Story Images Composition */}
+            <div className="relative">
+              <div className="aspect-[4/5] overflow-hidden rounded-sm bg-secondary">
+                <img
+                  src="/images/campaign.jpg"
+                  alt="The Makerman Way campaign"
+                  className="h-full w-full object-cover"
+                  loading="lazy"
+                />
+              </div>
+              <div className="hidden sm:block absolute -bottom-6 -right-6 w-1/2 aspect-square overflow-hidden rounded-sm border-4 border-background shadow-lift">
+                <img
+                  src="/images/detail-fabric.jpg"
+                  alt="Makerman fabric weave detail"
+                  className="h-full w-full object-cover"
+                  loading="lazy"
+                />
+              </div>
             </div>
 
-            {/* Look Details Sidebar */}
-            <div className="lg:col-span-5 space-y-6">
-              <div>
-                <span className="eyebrow text-subtle">Look 01 / Studio Casual</span>
-                <h3 className="font-display text-2xl mt-1">Overshirt & Column Denim</h3>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Layered heavy cotton overshirt paired with an organic jersey tee and dry selvedge denim.
+            {/* Story Text */}
+            <div className="space-y-6 max-w-lg">
+              <div className="inline-flex items-center gap-2">
+                <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                <p className="eyebrow text-amber-600 font-semibold tracking-widest">
+                  Atelier Craftsmanship
                 </p>
               </div>
 
-              {/* Hotspot Item list */}
-              <div className="divide-y divide-border border-y border-border">
-                {lookHotspots.map((item, idx) => {
-                  const product = productService.bySlug(item.slug);
-                  const isSelected = activeLookIndex === idx;
-                  return (
-                    <div
-                      key={item.id}
-                      onClick={() => setActiveLookIndex(idx)}
-                      className={cn(
-                        "flex items-center justify-between py-3.5 cursor-pointer transition-colors px-2",
-                        isSelected ? "bg-secondary/60" : "hover:bg-secondary/30",
-                      )}
+              <h2 className="font-display text-3xl sm:text-5xl font-normal leading-tight text-foreground">
+                The Makerman Way
+              </h2>
+
+              <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+                We believe true elegance lies in garments that feel effortless to live in. Every piece begins with premium long-staple Indian cottons, dry wools, and dense twills. We test each weave through multiple washes before it ever touches a pattern block.
+              </p>
+
+              <div className="space-y-3 pt-2">
+                <div className="flex items-start gap-3">
+                  <Check className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+                  <p className="text-xs text-foreground/90">
+                    <strong>240–320 GSM Weights:</strong> Structured lines that hold their drape after daily wear.
+                  </p>
+                </div>
+                <div className="flex items-start gap-3">
+                  <Check className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+                  <p className="text-xs text-foreground/90">
+                    <strong>Double-Turned French Seams:</strong> Clean finishes inside and out with zero rough edges.
+                  </p>
+                </div>
+                <div className="flex items-start gap-3">
+                  <Check className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+                  <p className="text-xs text-foreground/90">
+                    <strong>Designed in Mumbai:</strong> Rooted in modern Indian lifestyle and climate demands.
+                  </p>
+                </div>
+              </div>
+
+              <div className="pt-4">
+                <Button asChild className="h-12 px-7 text-xs font-semibold uppercase tracking-[0.14em] bg-ink text-ink-foreground hover:bg-ink/90">
+                  <Link to="/store">Explore The Store</Link>
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ==========================================================
+          SECTION 6 — SHOP THE LOOK
+          ========================================================== */}
+      <section className="bg-[#FAF8F5] border-y border-border/80 py-14 sm:py-20">
+        <div className="container-page">
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-8 sm:mb-12 gap-4">
+            <div>
+              <p className="eyebrow text-amber-600 font-semibold tracking-widest">
+                Cohesive Styling
+              </p>
+              <h2 className="mt-1 font-display text-2xl sm:text-4xl text-foreground font-normal">
+                Shop The Look
+              </h2>
+            </div>
+            <Button
+              type="button"
+              onClick={handleShopCompleteLook}
+              className="h-11 px-6 text-xs font-semibold uppercase tracking-wider bg-ink text-ink-foreground hover:bg-ink/90"
+            >
+              <ShoppingBag className="h-3.5 w-3.5 mr-1.5" />
+              Add Complete Look to Bag
+            </Button>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+            {/* Look Image with Hotspots on Desktop */}
+            <div className="lg:col-span-7 relative aspect-[3/4] sm:aspect-[4/5] overflow-hidden rounded-sm bg-secondary">
+              <img
+                src="/images/look-1.jpg"
+                alt="Makerman styled look"
+                className="h-full w-full object-cover object-center"
+                loading="lazy"
+              />
+
+              {/* Desktop Interactive Hotspots */}
+              <div className="hidden sm:block">
+                {lookHotspots.map((spot) => (
+                  <div
+                    key={spot.id}
+                    className="absolute"
+                    style={{ left: spot.x, top: spot.y }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => setActiveHotspot(activeHotspot === spot.id ? null : spot.id)}
+                      className="group relative flex h-8 w-8 items-center justify-center rounded-full bg-white text-ink shadow-md transition-transform hover:scale-110 active:scale-95"
+                      aria-label={`View ${spot.title}`}
                     >
-                      <div className="flex items-center gap-3">
-                        <span className="num text-xs text-muted-foreground">0{idx + 1}</span>
-                        <div>
-                          <p className="text-xs font-medium">{item.title}</p>
-                          <p className="num text-[11px] text-muted-foreground">{formatINR(item.price)}</p>
+                      <span className="h-2 w-2 rounded-full bg-amber-500" />
+                      <span className="absolute -inset-1 rounded-full border border-white/60 animate-ping" />
+                    </button>
+
+                    {/* Popover Card */}
+                    {activeHotspot === spot.id && (
+                      <div className="absolute left-10 top-0 z-20 w-48 rounded-sm bg-background p-3 shadow-lift border border-border animate-in fade-in-50 zoom-in-95">
+                        <p className="text-xs font-semibold text-foreground line-clamp-1">{spot.title}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">{formatINR(spot.price)}</p>
+                        <button
+                          type="button"
+                          onClick={() => setQuickView(spot.slug)}
+                          className="mt-2 text-[0.6875rem] uppercase tracking-wider font-semibold text-amber-600 hover:underline"
+                        >
+                          Quick Add →
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Featured Items in the Look */}
+            <div className="lg:col-span-5 space-y-4">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Garments in this look:
+              </p>
+              
+              <div className="divide-y divide-border/60 border border-border/80 rounded-sm bg-background">
+                {lookHotspots.map((item) => {
+                  const product = productService.bySlug(item.slug);
+                  if (!product) return null;
+
+                  return (
+                    <div key={item.id} className="p-4 flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <img
+                          src={product.images[0]}
+                          alt={product.name}
+                          className="h-16 w-12 object-cover rounded-xs bg-secondary shrink-0"
+                          loading="lazy"
+                        />
+                        <div className="truncate">
+                          <Link
+                            to="/product/$slug"
+                            params={{ slug: product.slug }}
+                            className="text-xs font-semibold text-foreground hover:underline truncate block"
+                          >
+                            {product.name}
+                          </Link>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {formatINR(product.price)}
+                          </p>
                         </div>
                       </div>
 
-                      <button
+                      <Button
                         type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setQuickView(item.slug);
-                        }}
-                        className="text-xs text-accent font-medium hover:underline"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => addToCart(product.slug, product.sizes[0] ?? "M", product.colors[0]?.name ?? "Natural", 1)}
+                        className="h-9 px-3 text-[0.6875rem] font-semibold uppercase tracking-wider shrink-0"
                       >
-                        Quick Add
-                      </button>
+                        <Plus className="h-3.5 w-3.5 mr-1" />
+                        Add
+                      </Button>
                     </div>
                   );
                 })}
               </div>
-
-              <div className="space-y-2.5 pt-2">
-                <Button
-                  onClick={handleShopCompleteLook}
-                  className="w-full h-12 text-xs uppercase tracking-[0.12em]"
-                >
-                  Shop The Complete Look — {formatINR(lookHotspots.reduce((sum, i) => sum + i.price, 0))}
-                </Button>
-                <p className="text-[11px] text-center text-muted-foreground">
-                  Individual pieces can be adjusted or removed in your bag.
-                </p>
-              </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* 6. BEST SELLERS GRID */}
-      <section className="section-y bg-secondary/30 border-y border-border">
+      {/* ==========================================================
+          SECTION 7 — TRUST / SERVICE STRIP
+          ========================================================== */}
+      <section className="border-b border-border bg-background py-10 sm:py-14">
         <div className="container-page">
-          <div className="flex items-end justify-between mb-8 md:mb-10">
-            <div>
-              <p className="eyebrow text-subtle">Proven Staples</p>
-              <h2 className="mt-1.5 font-display text-2xl sm:text-4xl">Best Sellers</h2>
-            </div>
-            <Button asChild variant="subtle" size="sm" className="hidden sm:inline-flex">
-              <Link to="/shop" search={{ sort: "rating" } as never}>
-                View All <ArrowRight className="h-3.5 w-3.5 ml-1" />
-              </Link>
-            </Button>
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
-            {bestSellers.slice(0, 8).map((product) => (
-              <ProductCard key={product.slug} product={product} />
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* 7. BRAND STORY EDITORIAL */}
-      <section className="section-y bg-background">
-        <div className="container-page">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-16 items-center">
-            <div className="lg:col-span-5 space-y-6">
-              <span className="eyebrow text-subtle">The Atelier</span>
-              <h2 className="font-display text-3xl sm:text-5xl font-normal leading-tight">
-                Less noise. Better pieces.
-              </h2>
-              <p className="text-sm sm:text-base text-muted-foreground leading-relaxed">
-                AVELOR was founded on a simple dissatisfaction with fleeting fashion cycles and overdesigned garments. We build honest, understated clothing that wears easily and lasts through years of regular use.
+          <div className="grid grid-cols-2 lg:grid-cols-5 gap-6 sm:gap-8">
+            <div className="flex flex-col items-start text-left">
+              <Feather className="h-5 w-5 text-amber-600 mb-2" strokeWidth={1.5} />
+              <p className="text-xs font-semibold uppercase tracking-wider text-foreground">
+                Premium Fabrics
               </p>
-              <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
-                Every fabric is sourced from certified family-run mills, garment washed for soft structure, and finished with meticulous seam allowances.
+              <p className="text-[0.75rem] text-muted-foreground mt-1 leading-relaxed">
+                Long-staple Indian cottons and durable twills.
               </p>
-              <div className="pt-2">
-                <Button asChild variant="outline" className="h-11 px-6 text-xs uppercase tracking-wider">
-                  <Link to="/about">Read Our Full Story</Link>
-                </Button>
-              </div>
             </div>
 
-            <div className="lg:col-span-7 grid grid-cols-2 gap-4">
-              <div className="aspect-3/4 overflow-hidden bg-secondary">
-                <img
-                  src="/images/story-1.jpg"
-                  alt="Fabric cutting in studio"
-                  className="h-full w-full object-cover"
-                />
-              </div>
-              <div className="aspect-3/4 overflow-hidden bg-secondary mt-8">
-                <img
-                  src="/images/detail-fabric.jpg"
-                  alt="Raw cotton texture closeup"
-                  className="h-full w-full object-cover"
-                />
-              </div>
+            <div className="flex flex-col items-start text-left">
+              <Truck className="h-5 w-5 text-amber-600 mb-2" strokeWidth={1.5} />
+              <p className="text-xs font-semibold uppercase tracking-wider text-foreground">
+                Pan-India Delivery
+              </p>
+              <p className="text-[0.75rem] text-muted-foreground mt-1 leading-relaxed">
+                Complimentary shipping on orders above ₹1,999.
+              </p>
+            </div>
+
+            <div className="flex flex-col items-start text-left">
+              <RotateCcw className="h-5 w-5 text-amber-600 mb-2" strokeWidth={1.5} />
+              <p className="text-xs font-semibold uppercase tracking-wider text-foreground">
+                15-Day Easy Returns
+              </p>
+              <p className="text-[0.75rem] text-muted-foreground mt-1 leading-relaxed">
+                Doorstep pickup and free size exchange.
+              </p>
+            </div>
+
+            <div className="flex flex-col items-start text-left">
+              <ShieldCheck className="h-5 w-5 text-amber-600 mb-2" strokeWidth={1.5} />
+              <p className="text-xs font-semibold uppercase tracking-wider text-foreground">
+                Secure Payments
+              </p>
+              <p className="text-[0.75rem] text-muted-foreground mt-1 leading-relaxed">
+                UPI, Cards, Net Banking & Cash on Delivery.
+              </p>
+            </div>
+
+            <div className="flex flex-col items-start text-left col-span-2 lg:col-span-1">
+              <Clock className="h-5 w-5 text-amber-600 mb-2" strokeWidth={1.5} />
+              <p className="text-xs font-semibold uppercase tracking-wider text-foreground">
+                Client Concierge
+              </p>
+              <p className="text-[0.75rem] text-muted-foreground mt-1 leading-relaxed">
+                Direct studio support via WhatsApp & phone.
+              </p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* 8. EDITORIAL CAMPAIGN BANNER */}
-      <section className="relative min-h-[60vh] sm:min-h-[70vh] flex items-center justify-center bg-secondary overflow-hidden">
-        <img
-          src="/images/campaign.jpg"
-          alt="Campaign study"
-          className="absolute inset-0 h-full w-full object-cover brightness-[0.75]"
-        />
-        <div className="container-page relative z-10 text-center text-white py-16">
-          <span className="eyebrow tracking-[0.25em] text-white/80 uppercase mb-3 inline-block">
-            Denim Study · Release 02
-          </span>
-          <h2 className="font-display text-3xl sm:text-6xl max-w-2xl mx-auto leading-tight text-white">
-            Raw indigo woven on vintage shuttle looms.
-          </h2>
-          <p className="mt-4 text-sm sm:text-base text-white/80 max-w-md mx-auto">
-            13.5 oz selvedge denim crafted with authentic ring-spun yarn and custom copper hardware.
+      {/* ==========================================================
+          SECTION 8 — NEWSLETTER
+          ========================================================== */}
+      <section className="bg-[#FAF8F5] py-16 sm:py-20 text-center">
+        <div className="container-page max-w-xl mx-auto">
+          <p className="eyebrow text-amber-600 font-semibold tracking-widest mb-2">
+            The Makerman Register
           </p>
-          <div className="mt-8">
+          <h2 className="font-display text-2xl sm:text-4xl text-foreground font-normal">
+            Join The Makerman World
+          </h2>
+          <p className="mt-2 text-xs sm:text-sm text-muted-foreground leading-relaxed max-w-sm mx-auto">
+            Be the first to know about new arrivals, private studio drops, and special releases.
+          </p>
+
+          <form onSubmit={handleNewsletter} className="mt-6 flex flex-col sm:flex-row gap-2 max-w-md mx-auto">
+            <input
+              type="email"
+              value={newsletterEmail}
+              onChange={(e) => setNewsletterEmail(e.target.value)}
+              placeholder="Enter your email address"
+              className="h-12 flex-1 px-4 text-xs bg-background border border-border rounded-sm focus:outline-none focus:ring-1 focus:ring-ring"
+              required
+            />
             <Button
-              asChild
-              className="h-12 px-8 text-xs uppercase tracking-[0.14em] font-medium bg-white text-ink hover:bg-white/90"
+              type="submit"
+              className="h-12 px-7 text-xs font-semibold uppercase tracking-wider bg-ink text-ink-foreground hover:bg-ink/90 rounded-sm"
             >
-              <Link to="/collections/$slug" params={{ slug: "denim-study" }}>
-                Explore The Denim Study
-              </Link>
+              Subscribe
             </Button>
-          </div>
-        </div>
-      </section>
-
-      {/* 9. TESTIMONIALS */}
-      <section className="section-y bg-background">
-        <div className="container-page">
-          <div className="text-center max-w-xl mx-auto mb-10 md:mb-14">
-            <p className="eyebrow text-subtle">Client Reflections</p>
-            <h2 className="mt-2 font-display text-3xl sm:text-4xl">Wearer Notes</h2>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {reviews.slice(0, 3).map((r) => (
-              <div
-                key={r.id}
-                className="flex flex-col justify-between p-6 sm:p-8 bg-secondary/30 border border-border/70"
-              >
-                <div>
-                  <div className="flex items-center gap-1 mb-3">
-                    {Array.from({ length: 5 }).map((_, i) => (
-                      <Star
-                        key={i}
-                        className={cn(
-                          "h-3.5 w-3.5",
-                          i < r.rating ? "fill-foreground text-foreground" : "text-border",
-                        )}
-                      />
-                    ))}
-                  </div>
-                  <h3 className="font-display text-lg mb-2 leading-snug">"{r.title}"</h3>
-                  <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
-                    {r.body}
-                  </p>
-                </div>
-
-                <div className="pt-6 mt-6 border-t border-border/50 flex items-center justify-between text-xs">
-                  <div>
-                    <p className="font-medium text-foreground">{r.name}</p>
-                    <p className="text-[11px] text-muted-foreground">{r.city}</p>
-                  </div>
-                  {r.verified && (
-                    <span className="flex items-center gap-1 text-[11px] text-accent">
-                      <CheckCircle2 className="h-3 w-3" /> Verified
-                    </span>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* 10. INSTAGRAM / SOCIAL PROOF GALLERY */}
-      <section className="border-t border-border bg-background pt-12 pb-16">
-        <div className="container-page mb-6 flex flex-col sm:flex-row sm:items-end justify-between gap-2">
-          <div>
-            <p className="eyebrow text-subtle">Community</p>
-            <h2 className="mt-1 font-display text-xl sm:text-2xl">Worn Worldwide</h2>
-          </div>
-          <a
-            href="https://instagram.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-xs font-medium text-accent hover:underline"
-          >
-            Follow @avelor on Instagram →
-          </a>
-        </div>
-
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 px-2 sm:px-4">
-          {[
-            { img: "/images/p-shirt-1.jpg", tag: "@siddharth.m" },
-            { img: "/images/p-dress-1.jpg", tag: "@meera.atelier" },
-            { img: "/images/p-overshirt-1.jpg", tag: "@arjun_k" },
-            { img: "/images/p-jacket-1.jpg", tag: "@tanya.studio" },
-            { img: "/images/p-jeans-1.jpg", tag: "@rohan_v" },
-            { img: "/images/p-knit-1.jpg", tag: "@ananya.r" },
-          ].map((item, idx) => (
-            <div key={idx} className="group relative aspect-square overflow-hidden bg-secondary">
-              <img
-                src={item.img}
-                alt=""
-                className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-              />
-              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center p-2 text-center text-white">
-                <span className="text-[11px] font-medium tracking-wider">{item.tag}</span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* 11. NEWSLETTER REGISTER */}
-      <section className="bg-ink text-ink-foreground py-16 sm:py-20">
-        <div className="container-page text-center max-w-xl mx-auto">
-          <span className="eyebrow tracking-[0.2em] text-white/60 uppercase">The Register</span>
-          <h2 className="mt-2 font-display text-3xl sm:text-5xl font-normal text-white">
-            Stay in the loop.
-          </h2>
-          <p className="mt-3 text-xs sm:text-sm text-white/70 font-light leading-relaxed">
-            Receive private notifications for seasonal collection drops, editorial essays, and studio archival releases.
-          </p>
-
-          {subscribed ? (
-            <div className="mt-8 p-4 border border-white/20 bg-white/5 text-xs text-white">
-              Thank you for subscribing. A confirmation note has been dispatched.
-            </div>
-          ) : (
-            <form onSubmit={handleSubscribe} className="mt-8 flex flex-col sm:flex-row gap-2 max-w-md mx-auto">
-              <input
-                type="email"
-                required
-                value={newsletterEmail}
-                onChange={(e) => setNewsletterEmail(e.target.value)}
-                placeholder="Enter your email address"
-                className="h-12 flex-1 bg-white/10 border border-white/20 px-4 text-xs text-white placeholder:text-white/50 outline-none focus:border-white transition-colors"
-              />
-              <button
-                type="submit"
-                className="h-12 px-6 bg-white text-ink text-xs uppercase tracking-[0.12em] font-medium hover:bg-white/90 transition-colors"
-              >
-                Subscribe
-              </button>
-            </form>
-          )}
-
-          <p className="mt-4 text-[10px] text-white/40">
-            We value your privacy. Unsubscribe at any time with a single click.
-          </p>
+          </form>
         </div>
       </section>
     </div>

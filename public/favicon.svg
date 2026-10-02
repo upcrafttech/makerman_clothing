@@ -1,4 +1,17 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
-  <rect width="32" height="32" rx="4" fill="#171717"/>
-  <path d="M16 6L8 24H12L13.8 19.5H18.2L20 24H24L16 6ZM14.8 16.5L16 13.2L17.2 16.5H14.8Z" fill="#F6F4F0"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <rect width="64" height="64" rx="12" fill="#FFFFFF"/>
+  <!-- Makerman Bird Icon -->
+  <g transform="translate(6, 6) scale(0.8)">
+    <!-- Wings in black -->
+    <path d="M18 10C24 16 26 28 26 40C22 30 14 26 12 18C14 16 16 12 18 10Z" fill="#171717"/>
+    <path d="M22 18C28 24 30 32 30 42C26 34 20 30 18 24C19 21 21 19 22 18Z" fill="#171717"/>
+    <!-- Yellow bird body -->
+    <path d="M28 28C32 20 40 12 50 14C48 20 44 26 38 32C32 38 28 48 26 58C25 54 24 50 25 44C25 38 26 32 28 28Z" fill="#F5A623"/>
+    <!-- Beak -->
+    <polygon points="50,14 62,10 46,18" fill="#171717"/>
+    <!-- Eye dot -->
+    <circle cx="44" cy="16" r="1.5" fill="#171717"/>
+    <!-- Tail feet accent -->
+    <polygon points="30,48 35,52 31,54" fill="#171717"/>
+  </g>
 </svg>

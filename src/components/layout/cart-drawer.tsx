@@ -62,13 +62,13 @@ export function CartDrawer() {
         {/* Header */}
         <div className="flex h-16 items-center justify-between border-b border-border px-6">
           <div className="flex items-center gap-2">
-            <h2 className="font-display text-lg tracking-[0.1em] uppercase">Shopping Bag</h2>
+            <h2 className="font-display text-lg tracking-[0.12em] uppercase">Your Bag</h2>
             <span className="num text-xs text-muted-foreground">({cartCount})</span>
           </div>
           <button
             type="button"
             onClick={() => setCartOpen(false)}
-            className="grid h-10 w-10 place-items-center text-muted-foreground hover:text-foreground transition-colors"
+            className="grid h-11 w-11 place-items-center text-muted-foreground hover:text-foreground transition-colors"
             aria-label="Close bag"
           >
             <X className="h-5 w-5" strokeWidth={1.4} />
@@ -80,9 +80,11 @@ export function CartDrawer() {
           <div className="flex items-center justify-between text-xs mb-1.5">
             <span className="text-muted-foreground">
               {amountNeeded === 0 ? (
-                <span className="font-medium text-foreground">You qualify for complimentary shipping!</span>
+                <span className="font-medium text-foreground">You have unlocked complimentary shipping!</span>
               ) : (
-                <>Add <span className="num font-medium text-foreground">{formatINR(amountNeeded)}</span> for free shipping</>
+                <>
+                  <span className="num font-semibold text-foreground">{formatINR(amountNeeded)}</span> away from complimentary shipping
+                </>
               )}
             </span>
             <span className="num text-[11px] text-muted-foreground">{Math.round(progressPercent)}%</span>
@@ -99,19 +101,17 @@ export function CartDrawer() {
         <div className="flex-1 overflow-y-auto px-6 py-4 space-y-6">
           {activeLines.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-center">
-              <div className="grid h-16 w-16 place-items-center rounded-full bg-secondary text-muted-foreground mb-4">
-                <ShoppingBag className="h-7 w-7" strokeWidth={1.2} />
-              </div>
-              <h3 className="font-display text-lg">Your bag is empty</h3>
-              <p className="mt-1 text-xs text-muted-foreground max-w-xs">
-                Explore our collection of modern essentials, tailoring and considered silhouettes.
+              <ShoppingBag className="h-10 w-10 text-muted-foreground/50 stroke-[1.2]" />
+              <p className="mt-4 font-display text-lg">Your bag is empty</p>
+              <p className="mt-1 text-xs text-muted-foreground max-w-[240px]">
+                Explore our curated essentials and add your favorite pieces.
               </p>
               <Button
-                onClick={() => setCartOpen(false)}
                 asChild
-                className="mt-6"
+                className="mt-6 h-11 px-6 text-xs uppercase tracking-wider bg-ink text-ink-foreground hover:bg-ink/90"
+                onClick={() => setCartOpen(false)}
               >
-                <Link to="/shop">Shop New Arrivals</Link>
+                <Link to="/store">Explore Store</Link>
               </Button>
             </div>
           ) : (

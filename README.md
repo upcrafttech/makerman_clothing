@@ -1,6 +1,6 @@
-# Avelor Atelier
+# Makerman Clothing — Feeling Happiness
 
-# PREMIUM FASHION ECOMMERCE WEBSITE — FRONTEND ONLY
+# PREMIUM FASHION ECOMMERCE WEBSITE — MAKERMAN
 
 You are a senior product designer, creative director, ecommerce UX architect, senior React engineer, responsive UI specialist, and motion designer.
 
@@ -118,7 +118,7 @@ Create a fictional premium fashion brand.
 
 Use a sophisticated temporary brand name such as:
 
-"AVELOR"
+"MAKERMAN"
 
 You may improve the name if you have a better premium fashion-brand name.
 
@@ -625,7 +625,7 @@ Hover overlay.
 
 CTA:
 
-"Follow @avelor"
+"Follow @makermanclothing"
 
 ---
 

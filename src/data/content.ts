@@ -1,13 +1,13 @@
 import type { Address, Article, Collection, Order, Review } from "@/types";
 
 export const BRAND = {
-  name: "AVELOR",
-  tagline: "Designed for the everyday.",
-  instagram: "@avelor",
-  email: "care@avelor.in",
+  name: "MAKERMAN",
+  tagline: "Feeling Happiness",
+  instagram: "@makermanclothing",
+  email: "care@makerman.in",
   phone: "+91 98204 41120",
   whatsapp: "+91 98204 41120",
-  address: "Unit 4, Kamala Mills, Lower Parel, Mumbai 400013",
+  address: "Makerman Atelier, Kamala Mills, Lower Parel, Mumbai 400013",
 };
 
 export const collections: Collection[] = [
@@ -153,7 +153,7 @@ export const testimonials = [
     city: "Mumbai",
     rating: 5,
     quote:
-      "I stopped buying five things a season. Three AVELOR pieces cover most of my week and still look considered.",
+      "I stopped buying five things a season. Three Makerman pieces cover most of my week and still look considered.",
   },
   {
     name: "Nandita Rao",
@@ -209,7 +209,7 @@ export const articles: Article[] = [
     slug: "how-we-choose-fabric",
     title: "How we choose a fabric",
     category: "Materials",
-    excerpt: "Weight, twist, finish and shrinkage — the four tests every AVELOR fabric passes before it is cut.",
+    excerpt: "Weight, twist, finish and shrinkage — the four tests every Makerman fabric passes before it is cut.",
     author: "Devang Shah",
     date: "2026-06-22",
     readingTime: "5 min read",
@@ -254,7 +254,7 @@ export const articles: Article[] = [
       {
         heading: "Repair as a habit",
         paragraphs: [
-          "Our Mumbai studio repairs any AVELOR piece for the first two years. A resewn seam costs us very little and keeps a garment out of a landfill for years.",
+          "Our Mumbai studio repairs any Makerman piece for the first two years. A resewn seam costs us very little and keeps a garment out of a landfill for years.",
         ],
       },
     ],
@@ -494,16 +494,16 @@ export const seedOrders: Order[] = [
 ];
 
 export const COUPONS: Record<string, { type: "percent" | "flat"; value: number; label: string }> = {
-  AVELOR10: { type: "percent", value: 10, label: "10% off your order" },
+  MAKERMAN10: { type: "percent", value: 10, label: "10% off your order" },
+  MAKERMAN15: { type: "percent", value: 15, label: "15% off — Makerman Club" },
   FIRST500: { type: "flat", value: 500, label: "₹500 off your first order" },
-  STUDIO15: { type: "percent", value: 15, label: "15% off — studio friends" },
 };
 
 export const faqs: { category: string; items: { q: string; a: string }[] }[] = [
   {
     category: "Orders",
     items: [
-      { q: "Can I change my order after placing it?", a: "Orders can be edited within 60 minutes of placing them. Write to care@avelor.in with your order number and we will update it before it reaches the studio." },
+      { q: "Can I change my order after placing it?", a: "Orders can be edited within 60 minutes of placing them. Write to care@makerman.in with your order number and we will update it before it reaches the studio." },
       { q: "How do I cancel an order?", a: "Open Account → Orders, select the order and choose Cancel. Cancellation is available until the order is marked Packed." },
       { q: "Do you take orders over WhatsApp?", a: "Yes. Message +91 98204 41120 and our studio team will place the order for you and share a payment link." },
     ],
@@ -535,7 +535,7 @@ export const faqs: { category: string; items: { q: string; a: string }[] }[] = [
   {
     category: "Products",
     items: [
-      { q: "Where are AVELOR pieces made?", a: "Everything is cut and stitched in two partner units in Mumbai, using fabrics milled in Tamil Nadu and Gujarat." },
+      { q: "Where are Makerman pieces made?", a: "Everything is cut and stitched in two partner units in Mumbai, using fabrics milled in Tamil Nadu and Gujarat." },
       { q: "Will a piece be restocked?", a: "Essentials are restocked continuously. Limited pieces are made once — use Notify Me on the product page." },
       { q: "How should I care for wool?", a: "Dry clean or hand wash cold with a wool detergent, then dry flat away from sunlight." },
     ],
@@ -553,7 +553,7 @@ export const faqs: { category: string; items: { q: string; a: string }[] }[] = [
     items: [
       { q: "Do I need an account to order?", a: "No, guest checkout is available. An account keeps your addresses and order history in one place." },
       { q: "How do I reset my password?", a: "Use Forgot Password on the sign-in page and we will send a reset link to your registered email." },
-      { q: "Can I delete my account?", a: "Write to care@avelor.in and we will remove your data within 7 working days." },
+      { q: "Can I delete my account?", a: "Write to care@makerman.in and we will remove your data within 7 working days." },
     ],
   },
 ];

@@ -177,11 +177,12 @@ export function QuickViewModal() {
                 <div className="flex justify-between text-xs mb-2">
                   <span className="font-medium text-foreground">Size</span>
                   <Link
-                    to="/size-guide"
+                    to="/product/$slug"
+                    params={{ slug: product.slug }}
                     onClick={() => setQuickView(null)}
-                    className="text-muted-foreground hover:text-foreground underline"
+                    className="text-muted-foreground hover:text-foreground underline text-[11px]"
                   >
-                    Size Guide
+                    View Full Details & Sizing
                   </Link>
                 </div>
                 <div className="grid grid-cols-6 gap-2">
@@ -242,10 +243,13 @@ export function QuickViewModal() {
                   variant="outline"
                   onClick={() => toggleWishlist(product.slug)}
                   className="h-12 w-12 p-0 grid place-items-center"
-                  aria-label="Wishlist"
+                  aria-label={wished ? "Remove from favorites" : "Add to favorites"}
                 >
                   <Heart
-                    className={cn("h-4 w-4", wished ? "fill-foreground text-foreground" : "")}
+                    className={cn(
+                      "h-4 w-4 transition-colors",
+                      wished ? "fill-amber-500 text-amber-500" : "text-foreground",
+                    )}
                   />
                 </Button>
               </div>

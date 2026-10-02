@@ -140,8 +140,8 @@ export function SearchModal() {
                   {CATEGORIES.slice(0, 9).map((cat) => (
                     <Link
                       key={cat.slug}
-                      to="/shop"
-                      search={{ category: cat.slug } as never}
+                      to="/store"
+                      search={{ category: cat.slug }}
                       onClick={() => setSearchOpen(false)}
                       className="flex items-center justify-between p-2.5 text-xs bg-secondary/40 hover:bg-secondary border border-border/40 transition-colors"
                     >
@@ -164,12 +164,12 @@ export function SearchModal() {
               <div className="flex items-center justify-between mb-4">
                 <p className="eyebrow text-subtle">{results.length} Products Found</p>
                 <Link
-                  to="/shop"
-                  search={{ query } as never}
+                  to="/store"
+                  search={{ query }}
                   onClick={() => setSearchOpen(false)}
                   className="text-xs font-medium text-accent hover:underline flex items-center gap-1"
                 >
-                  View all in catalog <ArrowRight className="h-3 w-3" />
+                  View all in store <ArrowRight className="h-3 w-3" />
                 </Link>
               </div>
 

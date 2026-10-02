@@ -58,28 +58,36 @@ export function ProductCard({
 
         <button
           type="button"
-          onClick={() => toggleWishlist(product.slug)}
-          aria-label={wished ? `Remove ${product.name} from wishlist` : `Add ${product.name} to wishlist`}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            toggleWishlist(product.slug);
+          }}
+          aria-label={wished ? `Remove ${product.name} from favorites` : `Add ${product.name} to favorites`}
           aria-pressed={wished}
-          className="absolute right-2 top-2 grid h-11 w-11 place-items-center text-foreground transition-colors hover:text-accent"
+          className="absolute right-2 top-2 z-10 grid h-11 w-11 place-items-center rounded-full bg-background/70 backdrop-blur-xs text-foreground transition-all hover:bg-background hover:scale-105 active:scale-95"
         >
           <Heart
             className={cn(
-              "h-[18px] w-[18px] transition-transform duration-300",
-              wished ? "scale-110 fill-foreground" : "scale-100",
+              "h-[18px] w-[18px] transition-transform duration-200",
+              wished ? "scale-110 fill-amber-500 text-amber-500" : "text-foreground/80 hover:text-foreground",
             )}
-            strokeWidth={1.3}
+            strokeWidth={1.4}
           />
         </button>
 
-        <div className="absolute inset-x-2 bottom-2 md:translate-y-3 md:opacity-0 md:transition-all md:duration-300 md:group-hover:translate-y-0 md:group-hover:opacity-100">
+        <div className="absolute inset-x-2 bottom-2 opacity-0 pointer-events-none transition-all duration-300 md:group-hover:opacity-100 md:group-hover:pointer-events-auto md:translate-y-0 translate-y-2">
           <button
             type="button"
-            onClick={() => setQuickView(product.slug)}
-            className="flex h-11 w-full items-center justify-center gap-1.5 bg-surface/95 text-xs font-medium tracking-[0.08em] uppercase backdrop-blur-sm transition-colors hover:bg-ink hover:text-ink-foreground"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setQuickView(product.slug);
+            }}
+            className="flex h-10 w-full items-center justify-center gap-1.5 bg-surface/95 text-[0.6875rem] font-semibold tracking-[0.14em] uppercase backdrop-blur-sm transition-colors hover:bg-ink hover:text-ink-foreground shadow-sm rounded-sm"
           >
-            <Plus className="h-3.5 w-3.5" strokeWidth={1.5} />
-            Quick Add
+            <Plus className="h-3.5 w-3.5" strokeWidth={1.8} />
+            Quick View
           </button>
         </div>
       </div>

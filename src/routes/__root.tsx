@@ -34,10 +34,10 @@ function NotFoundComponent() {
           Return Home
         </Link>
         <Link
-          to="/shop"
+          to="/store"
           className="inline-flex items-center justify-center border border-border bg-background text-foreground px-6 py-3 text-xs uppercase tracking-widest font-medium transition-colors hover:bg-secondary"
         >
-          Explore Catalog
+          Explore Store
         </Link>
       </div>
     </div>
@@ -81,21 +81,21 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1, maximum-scale=5" },
-      { title: "AVELOR — Designed for the everyday" },
+      { title: "MAKERMAN — Feeling Happiness" },
       {
         name: "description",
         content:
-          "AVELOR crafts modern essentials, tailoring and considered silhouettes with honest materials and refined proportions.",
+          "Makerman crafts refined modern essentials, tailored silhouettes, and premium fabrics. Feeling Happiness.",
       },
-      { name: "author", content: "AVELOR Atelier" },
-      { property: "og:title", content: "AVELOR — Modern Essentials & Tailoring" },
+      { name: "author", content: "Makerman Clothing" },
+      { property: "og:title", content: "MAKERMAN — Premium Clothing & Modern Essentials" },
       {
         property: "og:description",
-        content: "Modern essentials refined through considered materials and timeless silhouettes.",
+        content: "Refined clothing crafted with precision, premium fabrics and comfortable silhouettes. Feeling Happiness.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:site", content: "@avelor" },
+      { name: "twitter:site", content: "@makermanclothing" },
     ],
     links: [
       {
@@ -114,7 +114,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       {
         rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Space+Grotesk:wght@400;500;600&display=swap",
+        href: "https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&family=Space+Grotesk:wght@400;500&display=swap",
       },
     ],
   }),

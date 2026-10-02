@@ -13,7 +13,7 @@ import { defaultAddresses, seedOrders } from "@/data/content";
 import { productService } from "@/services";
 import type { Address, CartLine, Order, Product } from "@/types";
 
-const KEY = "avelor.v1";
+const KEY = "makerman.v1";
 
 type Session = { email: string; firstName: string; lastName: string } | null;
 
@@ -43,6 +43,8 @@ type ShopContextValue = {
   cartCount: number;
   subtotal: number;
   wishlist: string[];
+  favorites: string[];
+  favoritesCount: number;
   recentlyViewed: Product[];
   compare: string[];
   addresses: Address[];
@@ -56,6 +58,9 @@ type ShopContextValue = {
   toggleWishlist: (slug: string) => void;
   isWishlisted: (slug: string) => boolean;
   moveWishlistToCart: (slug: string) => void;
+  toggleFavorite: (slug: string) => void;
+  isFavorite: (slug: string) => boolean;
+  moveFavoriteToCart: (slug: string) => void;
   toggleCompare: (slug: string) => void;
   markViewed: (slug: string) => void;
   saveAddress: (address: Address) => void;
@@ -113,7 +118,7 @@ export function ShopProvider({ children }: { children: ReactNode }) {
           : [...prev.cart, { id, productSlug, size, color, quantity }];
         return { ...prev, cart };
       });
-      toast.success("Added to cart", { description: `${product?.name ?? "Item"} · ${size} · ${color}` });
+      toast.success("Added to bag", { description: `${product?.name ?? "Item"} · ${size} · ${color}` });
       setCartOpen(true);
     },
     [patch],
@@ -134,7 +139,7 @@ export function ShopProvider({ children }: { children: ReactNode }) {
   const removeLine = useCallback<ShopContextValue["removeLine"]>(
     (lineId) => {
       patch((prev) => ({ ...prev, cart: prev.cart.filter((l) => l.id !== lineId) }));
-      toast("Item removed");
+      toast("Item removed from bag");
     },
     [patch],
   );
@@ -154,7 +159,7 @@ export function ShopProvider({ children }: { children: ReactNode }) {
     (slug) => {
       patch((prev) => {
         const has = prev.wishlist.includes(slug);
-        toast(has ? "Removed from wishlist" : "Added to wishlist");
+        toast(has ? "Removed from favorites" : "Added to favorites");
         return {
           ...prev,
           wishlist: has ? prev.wishlist.filter((s) => s !== slug) : [slug, ...prev.wishlist],
@@ -256,6 +261,8 @@ export function ShopProvider({ children }: { children: ReactNode }) {
       cartCount: active.reduce((n, l) => n + l.quantity, 0),
       subtotal,
       wishlist: state.wishlist,
+      favorites: state.wishlist,
+      favoritesCount: state.wishlist.length,
       recentlyViewed: productService.bySlugs(state.recentlyViewed),
       compare: state.compare,
       addresses: state.addresses,
@@ -269,6 +276,9 @@ export function ShopProvider({ children }: { children: ReactNode }) {
       toggleWishlist,
       isWishlisted: (slug: string) => state.wishlist.includes(slug),
       moveWishlistToCart,
+      toggleFavorite: toggleWishlist,
+      isFavorite: (slug: string) => state.wishlist.includes(slug),
+      moveFavoriteToCart: moveWishlistToCart,
       toggleCompare,
       markViewed,
       saveAddress,
