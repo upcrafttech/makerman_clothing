@@ -8,11 +8,13 @@ import { formatINR } from "@/lib/format";
 import { useShop } from "@/lib/shop-store";
 import { cn } from "@/lib/utils";
 import { productService } from "@/services";
+import { useProductBySlug } from "@/hooks/use-api";
 
 export function QuickViewModal() {
   const { quickView, setQuickView, addToCart, toggleWishlist, isWishlisted } = useShop();
 
-  const product = quickView ? productService.bySlug(quickView) : null;
+  const { data: apiProduct } = useProductBySlug(quickView ?? undefined);
+  const product = apiProduct ?? (quickView ? productService.bySlug(quickView) : null);
 
   const [selectedColor, setSelectedColor] = useState<string>("");
   const [selectedSize, setSelectedSize] = useState<string>("");

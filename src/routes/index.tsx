@@ -16,7 +16,7 @@ import {
 import { useState } from "react";
 import { toast } from "sonner";
 
-import { ProductCard } from "@/components/product/product-card";
+import { ProductCard, ProductCardSkeleton } from "@/components/product/product-card";
 import { Button } from "@/components/ui/button";
 import { formatINR } from "@/lib/format";
 import { useShop } from "@/lib/shop-store";
@@ -44,12 +44,8 @@ export function HomePage() {
   const [newsletterEmail, setNewsletterEmail] = useState("");
   const [activeHotspot, setActiveHotspot] = useState<string | null>(null);
 
-  const { data: arrivalsData } = useProducts({ sort: "newest", size: 6 });
-  const liveArrivals = arrivalsData?.content;
-  const newArrivals =
-    liveArrivals && liveArrivals.length > 0
-      ? liveArrivals.slice(0, 6)
-      : productService.newArrivals(6);
+  const { data: arrivalsData, isLoading: arrivalsLoading } = useProducts({ sort: "newest", size: 6 });
+  const newArrivals = arrivalsData?.content ?? [];
 
   // Look pieces for "Shop The Look"
   const lookHotspots = [
@@ -80,15 +76,27 @@ export function HomePage() {
   ];
 
   const handleShopCompleteLook = () => {
+    let addedCount = 0;
     lookHotspots.forEach((item) => {
       const p = productService.bySlug(item.slug);
       if (p) {
         addToCart(p.slug, p.sizes[0] ?? "M", p.colors[0]?.name ?? "Natural", 1);
+        addedCount++;
       }
     });
-    toast.success("Complete look added to your bag", {
-      description: "3 garments added to your shopping bag.",
-    });
+    if (addedCount > 0) {
+      toast.success("Complete look added to your bag", {
+        description: `${addedCount} garments added to your shopping bag.`,
+      });
+    } else if (newArrivals.length > 0) {
+      const first = newArrivals[0];
+      addToCart(first.slug, first.sizes[0] ?? "M", first.colors[0]?.name ?? "Natural", 1);
+      toast.success("Garment added to your bag", {
+        description: `${first.name} added to your shopping bag.`,
+      });
+    } else {
+      toast.info("Please browse the store to add items to your bag.");
+    }
   };
 
   const handleNewsletter = (e: React.FormEvent) => {
@@ -212,15 +220,27 @@ export function HomePage() {
           </div>
 
           {/* Product Grid: 2 columns on mobile, 4 columns on desktop */}
-          <div className="grid grid-cols-2 gap-x-3 gap-y-8 sm:gap-x-6 sm:gap-y-12 lg:grid-cols-3 xl:grid-cols-4">
-            {newArrivals.map((product, idx) => (
-              <ProductCard
-                key={product.slug}
-                product={product}
-                priority={idx < 4}
-              />
-            ))}
-          </div>
+          {arrivalsLoading ? (
+            <div className="grid grid-cols-2 gap-x-3 gap-y-8 sm:gap-x-6 sm:gap-y-12 lg:grid-cols-3 xl:grid-cols-4">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <ProductCardSkeleton key={i} />
+              ))}
+            </div>
+          ) : newArrivals.length > 0 ? (
+            <div className="grid grid-cols-2 gap-x-3 gap-y-8 sm:gap-x-6 sm:gap-y-12 lg:grid-cols-3 xl:grid-cols-4">
+              {newArrivals.map((product, idx) => (
+                <ProductCard
+                  key={product.slug}
+                  product={product}
+                  priority={idx < 4}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="py-12 text-center text-muted-foreground text-xs sm:text-sm">
+              Explore our full collection in the store.
+            </div>
+          )}
 
           {/* Mobile view all CTA button */}
           <div className="mt-8 text-center sm:hidden">

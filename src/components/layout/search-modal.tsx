@@ -2,20 +2,18 @@ import { Link } from "@tanstack/react-router";
 import { ArrowRight, Search, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import { CATEGORIES } from "@/data/products";
 import { formatINR } from "@/lib/format";
 import { useShop } from "@/lib/shop-store";
 import { cn } from "@/lib/utils";
-import { productService } from "@/services";
-import { useProducts } from "@/hooks/use-api";
+import { useProducts, useCategories } from "@/hooks/use-api";
 
 const POPULAR_SEARCHES = [
-  "Raw Denim",
-  "Overshirt",
-  "Heavyweight Tee",
-  "Studio Blazer",
-  "Poplin Shirt",
-  "Merino Wool",
+  "Kurta",
+  "Shirt",
+  "Pant",
+  "Tshirt",
+  "Cotton",
+  "Linen",
 ];
 
 export function SearchModal() {
@@ -35,6 +33,11 @@ export function SearchModal() {
     search: debouncedQuery,
     size: 8,
   });
+
+  const { data: apiCategories } = useCategories();
+  const categories = useMemo(() => {
+    return (apiCategories ?? []).map((c) => ({ slug: c.id, label: c.name }));
+  }, [apiCategories]);
 
   useEffect(() => {
     if (searchOpen) {
@@ -62,18 +65,7 @@ export function SearchModal() {
 
   const results = useMemo(() => {
     if (!query.trim()) return [];
-    if (searchData?.content && searchData.content.length > 0) {
-      return searchData.content;
-    }
-    return productService.all().filter((p) => {
-      const q = query.toLowerCase();
-      return (
-        p.name.toLowerCase().includes(q) ||
-        p.categoryLabel.toLowerCase().includes(q) ||
-        p.material.toLowerCase().includes(q) ||
-        p.tags.some((t) => t.toLowerCase().includes(q))
-      );
-    });
+    return searchData?.content ?? [];
   }, [query, searchData]);
 
   return (
@@ -154,7 +146,7 @@ export function SearchModal() {
               <div>
                 <p className="eyebrow text-subtle mb-3">Browse Categories</p>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  {CATEGORIES.slice(0, 9).map((cat) => (
+                  {categories.slice(0, 9).map((cat) => (
                     <Link
                       key={cat.slug}
                       to="/store"

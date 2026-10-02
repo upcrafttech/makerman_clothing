@@ -36,6 +36,7 @@ import { useShop } from "@/lib/shop-store";
 import { cn } from "@/lib/utils";
 import { productService, reviewService } from "@/services";
 import { adaptProduct, registerProducts } from "@/lib/adapters";
+import { apiFetch } from "@/lib/api-client";
 import { useProductReviews } from "@/hooks/use-api";
 import type { ApiPagedProducts } from "@/types/api";
 
@@ -44,19 +45,17 @@ export const Route = createFileRoute("/product/$slug")({
     let product = productService.bySlug(params.slug);
     if (!product) {
       try {
-        const baseUrl =
-          (import.meta.env.VITE_API_BASE_URL as string) || "http://localhost:8080/api";
-        const businessId =
-          (import.meta.env.VITE_BUSINESS_ID as string) ||
-          "7febea53-02ed-4996-ae3a-1fc69d74292e";
-        const res = await fetch(`${baseUrl}/products?page=0&size=100&status=ACTIVE`, {
-          headers: { "X-Business-Id": businessId },
-        });
-        if (res.ok) {
-          const json = (await res.json()) as ApiPagedProducts;
-          const adapted = (json.content ?? []).map(adaptProduct);
-          registerProducts(adapted);
-          product = adapted.find((p) => p.slug === params.slug || p.id === params.slug);
+        const json = await apiFetch<ApiPagedProducts>("/products?page=0&size=100&status=ACTIVE");
+        const adapted = (json.content ?? []).map(adaptProduct);
+        registerProducts(adapted);
+        product = adapted.find((p) => p.slug === params.slug || p.id === params.slug);
+        if (!product) {
+          const searchJson = await apiFetch<ApiPagedProducts>(
+            `/products?search=${encodeURIComponent(params.slug)}&page=0&size=10`,
+          );
+          const searchAdapted = (searchJson.content ?? []).map(adaptProduct);
+          registerProducts(searchAdapted);
+          product = searchAdapted.find((p) => p.slug === params.slug || p.id === params.slug);
         }
       } catch {
         /* fallback to null */
@@ -101,24 +100,21 @@ export function ProductDetailPage() {
   const wished = isWishlisted(product.slug);
   const { data: apiReviews } = useProductReviews(product.id);
   const liveReviews = apiReviews?.content;
-  const productReviews =
-    liveReviews && liveReviews.length > 0
-      ? liveReviews.map((r) => ({
-          id: r.id,
-          productSlug: product.slug,
-          name: r.customerName || "Customer",
-          city: "Verified Buyer",
-          rating: r.rating,
-          title: r.title || "Refined craftsmanship",
-          body: r.body || "",
-          date: new Date(r.createdAt || Date.now()).toLocaleDateString("en-IN", {
-            month: "short",
-            day: "numeric",
-            year: "numeric",
-          }),
-          verified: true,
-        }))
-      : reviewService.forProduct(product.slug);
+  const productReviews = (liveReviews ?? []).map((r) => ({
+    id: r.id,
+    productSlug: product.slug,
+    name: r.customerName || "Customer",
+    city: "Verified Buyer",
+    rating: r.rating,
+    title: r.title || "Refined craftsmanship",
+    body: r.body || "",
+    date: new Date(r.createdAt || Date.now()).toLocaleDateString("en-IN", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    }),
+    verified: true,
+  }));
   const relatedProducts = productService.related(product, 4);
 
   const handleAddToCart = () => {

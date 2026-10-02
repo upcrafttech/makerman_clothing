@@ -5,9 +5,8 @@
  * dropped in later without touching a single component. Nothing here talks to a
  * backend today — data comes from src/data.
  */
-import { CATEGORIES, products } from "@/data/products";
 import { articles, collections, faqs, reviews, seedOrders } from "@/data/content";
-import { getRegisteredProduct, getAllRegisteredProducts } from "@/lib/adapters";
+import { getRegisteredProduct, getAllRegisteredProducts, getCategoryLabel } from "@/lib/adapters";
 import type { Article, Collection, Order, Product, ProductFilters, Review, SortKey } from "@/types";
 
 const delay = <T,>(value: T, ms = 120): Promise<T> =>
@@ -19,7 +18,12 @@ const materialMatches = (product: Product, material: string) =>
 
 export function applyFilters(list: Product[], filters: Partial<ProductFilters>): Product[] {
   return list.filter((p) => {
-    if (filters.categories?.length && !filters.categories.includes(p.category)) return false;
+    if (
+      filters.categories?.length &&
+      !filters.categories.includes(p.category) &&
+      !filters.categories.some((c) => c.toLowerCase() === p.categoryLabel.toLowerCase())
+    )
+      return false;
     if (filters.sizes?.length && !filters.sizes.some((s) => p.sizes.includes(s))) return false;
     if (filters.colors?.length && !filters.colors.some((c) => p.colors.some((pc) => pc.name === c)))
       return false;
@@ -60,70 +64,44 @@ export function sortProducts(list: Product[], sort: SortKey): Product[] {
 }
 
 export const productService = {
-  all: (): Product[] => {
-    const live = getAllRegisteredProducts();
-    return live.length > 0 ? live : products;
-  },
+  all: (): Product[] => getAllRegisteredProducts(),
   list: async (filters: Partial<ProductFilters> = {}, sort: SortKey = "featured"): Promise<Product[]> => {
-    const live = getAllRegisteredProducts();
-    const source = live.length > 0 ? live : products;
-    return delay(sortProducts(applyFilters(source, filters), sort));
+    return delay(sortProducts(applyFilters(getAllRegisteredProducts(), filters), sort));
   },
-  bySlug: (slug: string): Product | undefined =>
-    getRegisteredProduct(slug) ?? products.find((p) => p.slug === slug),
-  bySlugAsync: async (slug: string) =>
-    delay(getRegisteredProduct(slug) ?? products.find((p) => p.slug === slug)),
+  bySlug: (slug: string): Product | undefined => getRegisteredProduct(slug),
+  bySlugAsync: async (slug: string) => delay(getRegisteredProduct(slug)),
   bySlugs: (slugs: string[]): Product[] =>
     slugs
-      .map((s) => getRegisteredProduct(s) ?? products.find((p) => p.slug === s))
+      .map((s) => getRegisteredProduct(s))
       .filter((p): p is Product => Boolean(p)),
   newArrivals: (limit = 8): Product[] => {
-    const live = getAllRegisteredProducts();
-    const source = live.length > 0 ? live : products;
-    return sortProducts(source, "newest").slice(0, limit);
+    return sortProducts(getAllRegisteredProducts(), "newest").slice(0, limit);
   },
   bestSellers: (limit = 8): Product[] => {
-    const live = getAllRegisteredProducts();
-    const source = live.length > 0 ? live : products;
-    return source.filter((p) => p.badge === "Best Seller" || p.rating >= 4.6).slice(0, limit);
+    return getAllRegisteredProducts().filter((p) => p.badge === "Best Seller" || p.rating >= 4.6).slice(0, limit);
   },
   related: (product: Product, limit = 8): Product[] =>
-    products
+    getAllRegisteredProducts()
       .filter((p) => p.slug !== product.slug)
-      .sort((a, b) => {
-        const score = (p: Product) =>
-          (p.category === product.category ? 2 : 0) +
-          p.collections.filter((c) => product.collections.includes(c)).length;
-        return score(b) - score(a);
-      })
       .slice(0, limit),
-  trending: (limit = 6): Product[] => sortProducts(products, "rating").slice(0, limit),
+  trending: (limit = 6): Product[] => sortProducts(getAllRegisteredProducts(), "rating").slice(0, limit),
   recommendByStyle: (style: string, limit = 4): Product[] => {
-    const map: Record<string, string[]> = {
-      minimal: ["essentials", "studio-tailoring"],
-      classic: ["studio-tailoring", "winter-atelier"],
-      street: ["layering", "denim-study"],
-      relaxed: ["essentials", "summer-neutrals"],
-      contemporary: ["new-arrivals", "studio-tailoring"],
-    };
-    const wanted = map[style] ?? ["essentials"];
-    return products.filter((p) => p.collections.some((c) => wanted.includes(c))).slice(0, limit);
+    return getAllRegisteredProducts().slice(0, limit);
   },
 };
 
 export const categoryService = {
-  all: () => CATEGORIES,
-  label: (slug: string) => CATEGORIES.find((c) => c.slug === slug)?.label ?? slug,
+  label: (slug: string) => getCategoryLabel(slug) ?? slug,
 };
 
 export const collectionService = {
   all: (): Collection[] =>
     collections.map((c) => ({
       ...c,
-      productSlugs: products.filter((p) => p.collections.includes(c.slug)).map((p) => p.slug),
+      productSlugs: getAllRegisteredProducts().filter((p) => p.collections.includes(c.slug)).map((p) => p.slug),
     })),
   bySlug: (slug: string): Collection | undefined => collectionService.all().find((c) => c.slug === slug),
-  products: (slug: string): Product[] => products.filter((p) => p.collections.includes(slug)),
+  products: (slug: string): Product[] => getAllRegisteredProducts().filter((p) => p.collections.includes(slug)),
 };
 
 export const reviewService = {
@@ -142,7 +120,7 @@ export const searchService = {
     const q = query.trim().toLowerCase();
     if (!q) return { products: [], collections: [], articles: [] };
     return delay({
-      products: applyFilters(products, { query: q }).slice(0, 8),
+      products: applyFilters(getAllRegisteredProducts(), { query: q }).slice(0, 8),
       collections: collectionService.all().filter((c) => c.title.toLowerCase().includes(q)),
       articles: articles.filter(
         (a) => a.title.toLowerCase().includes(q) || a.category.toLowerCase().includes(q),

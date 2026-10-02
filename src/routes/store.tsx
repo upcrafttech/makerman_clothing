@@ -12,10 +12,9 @@ import { useMemo, useState } from "react";
 
 import { ProductCard, ProductCardSkeleton } from "@/components/product/product-card";
 import { Button } from "@/components/ui/button";
-import { CATEGORIES } from "@/data/products";
 import { formatINR } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import { applyFilters, productService, sortProducts } from "@/services";
+import { applyFilters, sortProducts } from "@/services";
 import { useProducts, useCategories } from "@/hooks/use-api";
 import type { ProductFilters, SortKey } from "@/types";
 
@@ -63,18 +62,6 @@ export const Route = createFileRoute("/store")({
   component: StorePage,
 });
 
-const SIZES = ["XS", "S", "M", "L", "XL", "XXL", "28", "30", "32", "34", "36", "38"];
-const COLORS = [
-  { name: "Ecru", hex: "#EFE9DF" },
-  { name: "Bone", hex: "#E3DCD1" },
-  { name: "Sand", hex: "#D8C7AE" },
-  { name: "Clay", hex: "#B99B7B" },
-  { name: "Charcoal", hex: "#3A3A3A" },
-  { name: "Black", hex: "#171717" },
-  { name: "Indigo", hex: "#3D4A63" },
-  { name: "Olive", hex: "#6B6A4B" },
-];
-
 export function StorePage() {
   const search = Route.useSearch();
   const navigate = useNavigate({ from: "/store" });
@@ -96,11 +83,28 @@ export function StorePage() {
 
   const { data: apiCategories } = useCategories();
   const categories = useMemo(() => {
-    if (apiCategories && apiCategories.length > 0) {
-      return apiCategories.map((c) => ({ slug: c.id, label: c.name }));
-    }
-    return CATEGORIES;
+    return (apiCategories ?? []).map((c) => ({ slug: c.id, label: c.name }));
   }, [apiCategories]);
+
+  const rawProducts = apiData?.content ?? [];
+
+  const availableSizes = useMemo(() => {
+    const raw = rawProducts.flatMap((p) => p.sizes);
+    const unique = Array.from(new Set(raw.filter(Boolean)));
+    return unique.length > 0 ? unique : ["XS", "S", "M", "L", "XL", "XXL"];
+  }, [rawProducts]);
+
+  const availableColors = useMemo(() => {
+    const map = new Map<string, { name: string; hex: string }>();
+    rawProducts.forEach((p) => {
+      p.colors?.forEach((c) => {
+        if (c.name && !map.has(c.name)) {
+          map.set(c.name, c);
+        }
+      });
+    });
+    return Array.from(map.values());
+  }, [rawProducts]);
 
   // Filter products
   const filteredProducts = useMemo(() => {
@@ -113,14 +117,10 @@ export function StorePage() {
       inStockOnly: activeInStock,
       query: activeQuery,
     };
-    const base =
-      apiData?.content && apiData.content.length > 0
-        ? apiData.content
-        : productService.all();
-    const filtered = applyFilters(base, filters);
+    const filtered = applyFilters(rawProducts, filters);
     return sortProducts(filtered, activeSort);
   }, [
-    apiData,
+    rawProducts,
     activeCategory,
     activeGender,
     activeCollection,
@@ -176,7 +176,7 @@ export function StorePage() {
                   : activeGender === "women"
                     ? "Women's Wardrobe"
                     : activeCategory
-                      ? categories.find((c) => c.slug === activeCategory)?.label ?? "Curated Store"
+                      ? (categories.find((c) => c.slug === activeCategory || c.label.toLowerCase() === activeCategory.toLowerCase())?.label ?? "Curated Store")
                       : "The Complete Store"}
             </h1>
             <p className="mt-3 text-xs sm:text-sm text-muted-foreground leading-relaxed">
@@ -315,7 +315,7 @@ export function StorePage() {
                 Size
               </p>
               <div className="grid grid-cols-4 gap-1.5">
-                {SIZES.map((sz) => (
+                {availableSizes.map((sz) => (
                   <button
                     key={sz}
                     type="button"
@@ -339,7 +339,7 @@ export function StorePage() {
                 Color
               </p>
               <div className="flex flex-wrap gap-2">
-                {COLORS.map((col) => (
+                {availableColors.map((col) => (
                   <button
                     key={col.name}
                     type="button"
@@ -549,7 +549,7 @@ export function StorePage() {
                 Size
               </p>
               <div className="grid grid-cols-4 gap-2">
-                {SIZES.map((sz) => (
+                {availableSizes.map((sz) => (
                   <button
                     key={sz}
                     type="button"
@@ -573,7 +573,7 @@ export function StorePage() {
                 Color
               </p>
               <div className="flex flex-wrap gap-3">
-                {COLORS.map((col) => (
+                {availableColors.map((col) => (
                   <button
                     key={col.name}
                     type="button"

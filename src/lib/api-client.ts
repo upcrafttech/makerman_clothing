@@ -1,5 +1,7 @@
-const BASE_URL =
-  (import.meta.env.VITE_API_BASE_URL as string) || "http://localhost:8080/api";
+const isBrowser = typeof window !== "undefined";
+const BASE_URL = isBrowser
+  ? "/api"
+  : (import.meta.env.VITE_API_BASE_URL as string) || "http://localhost:8080/api";
 const BUSINESS_ID =
   (import.meta.env.VITE_BUSINESS_ID as string) || "7febea53-02ed-4996-ae3a-1fc69d74292e";
 
