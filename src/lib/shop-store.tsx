@@ -179,9 +179,9 @@ export function ShopProvider({ children }: { children: ReactNode }) {
           pincode: data.pincode || defaultStoreInfo.pincode,
           fullAddress: parts.length > 0 ? parts.join(", ") : defaultStoreInfo.fullAddress,
           gstin: data.gstin || null,
-          description: data.description || defaultStoreInfo.description,
+          description: (data.description || defaultStoreInfo.description) ?? null,
           logoUrl: data.logoUrl || null,
-          currency: (data as any).baseCurrency || defaultStoreInfo.currency,
+          currency: ((data as any).baseCurrency || defaultStoreInfo.currency) ?? null,
         };
         setStoreInfo(updated);
         try {

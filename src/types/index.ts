@@ -21,7 +21,7 @@ export type Product = {
   rating: number;
   reviewCount: number;
   images: string[];
-  badge?: "New" | "Best Seller" | "Limited" | "Sale" | undefined;
+  badge?: "New" | "Best Seller" | "Limited" | "Sale" | "Featured" | undefined;
   inStock: boolean;
   stockCount: number;
   tags: string[];

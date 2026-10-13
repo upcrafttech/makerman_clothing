@@ -5,3 +5,11 @@
 [build.environment]
   NODE_VERSION = "22"
   NITRO_PRESET = "netlify"
+  VITE_API_BASE_URL = "https://dashboard.upcraft.tech/api"
+  VITE_BUSINESS_ID = "1a6176f2-7f3b-41f3-92ab-514885680a2a"
+
+[[redirects]]
+  from = "/api/*"
+  to = "https://dashboard.upcraft.tech/api/:splat"
+  status = 200
+  force = true

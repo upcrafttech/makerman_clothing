@@ -95,7 +95,7 @@ export function Header() {
                   <Link
                     key={item.label}
                     to={item.to}
-                    activeOptions={item.exact ? { exact: true } : undefined}
+                    {...(item.exact ? { activeOptions: { exact: true } } : {})}
                     className={cn(
                       "text-xs uppercase font-medium tracking-[0.16em] text-foreground/80 hover:text-foreground transition-colors relative py-1.5",
                       "after:content-[''] after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[1.5px] after:bg-foreground after:scale-x-0 hover:after:scale-x-100 after:transition-transform after:origin-left",

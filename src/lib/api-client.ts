@@ -1,5 +1,5 @@
 const isBrowser = typeof window !== "undefined";
-const envApiUrl = (import.meta.env as Record<string, string>)["VITE_API_BASE_URL"];
+const envApiUrl = import.meta.env.VITE_API_BASE_URL;
 const BASE_URL =
   envApiUrl && envApiUrl.trim() !== ""
     ? envApiUrl.trim()
@@ -7,7 +7,7 @@ const BASE_URL =
       ? "/api"
       : "https://dashboard.upcraft.tech/api";
 export const BUSINESS_ID =
-  ((import.meta.env as Record<string, string>)["VITE_BUSINESS_ID"] as string) ||
+  import.meta.env.VITE_BUSINESS_ID ||
   "1a6176f2-7f3b-41f3-92ab-514885680a2a";
 
 export async function apiFetch<T>(

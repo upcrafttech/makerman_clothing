@@ -43,6 +43,7 @@ export interface ApiPagedProducts {
 export interface ApiCategory {
   id: string;
   name: string;
+  imageUrl?: string | null | undefined;
 }
 
 export interface ApiAuthResponse {
