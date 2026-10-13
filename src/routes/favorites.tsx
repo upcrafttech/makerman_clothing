@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { useShop } from "@/lib/shop-store";
 import { productService } from "@/services";
 import { useProducts, useApiWishlist } from "@/hooks/use-api";
+import { getRegisteredProduct } from "@/lib/adapters";
 
 export const Route = createFileRoute("/favorites")({
   head: () => ({
@@ -25,7 +26,7 @@ export function FavoritesPage() {
   const { data: _apiWishlist } = useApiWishlist();
 
   const favoriteProducts = wishlist
-    .map((slug) => productService.bySlug(slug))
+    .map((slug) => getRegisteredProduct(slug) ?? productService.bySlug(slug))
     .filter((p): p is NonNullable<typeof p> => Boolean(p));
 
   const handleMoveAllToBag = () => {

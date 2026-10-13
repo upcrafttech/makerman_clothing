@@ -11,6 +11,8 @@ import {
   ShieldCheck,
   ShoppingBag,
   Trash2,
+  Truck,
+  ExternalLink,
   User,
 } from "lucide-react";
 import { useState } from "react";
@@ -24,14 +26,20 @@ import { useShop } from "@/lib/shop-store";
 import { cn } from "@/lib/utils";
 import { productService } from "@/services";
 import { authStore } from "@/lib/auth-store";
+import { getRegisteredProduct } from "@/lib/adapters";
 import {
   useLogin,
   useRegister,
   useVerifyOtp,
+  useResendOtp,
   useOrders,
   useApiWishlist,
+  useCustomerAddresses,
+  useCreateCustomerAddress,
+  useDeleteCustomerAddress,
+  useSetDefaultCustomerAddress,
 } from "@/hooks/use-api";
-import type { Address } from "@/types";
+import type { Address, Order } from "@/types";
 
 export const Route = createFileRoute("/account")({
   head: () => ({
@@ -69,8 +77,17 @@ export function AccountPage() {
   const loginMutation = useLogin();
   const registerMutation = useRegister();
   const verifyOtpMutation = useVerifyOtp();
+  const resendOtpMutation = useResendOtp();
   const { data: apiOrdersData } = useOrders();
   const { data: apiWishlistData } = useApiWishlist();
+  const { data: apiAddresses, isLoading: isAddressesLoading } = useCustomerAddresses();
+  const createAddressMutation = useCreateCustomerAddress();
+  const deleteAddressMutation = useDeleteCustomerAddress();
+  const setDefaultAddressMutation = useSetDefaultCustomerAddress();
+
+  const currentAddresses = (session && apiAddresses ? apiAddresses : addresses).filter(
+    (a) => a.id !== "addr-1" && a.id !== "addr-2" && a.fullName !== "Aarav Deshpande",
+  );
 
   const [isAddingAddress, setIsAddingAddress] = useState(false);
   const [newAddr, setNewAddr] = useState<Partial<Address>>({
@@ -121,13 +138,19 @@ export function AccountPage() {
       return;
     }
 
+    const cleanedPhone = authPhone.replace(/\D/g, "");
+    if (!cleanedPhone || cleanedPhone.length < 10) {
+      toast.error("Please enter a valid 10-digit mobile number");
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       await registerMutation.mutateAsync({
         name: authName.trim(),
         email: authEmail.trim(),
         password: authPassword,
-        phone: authPhone.replace(/\D/g, "") || undefined,
+        phone: cleanedPhone,
       });
       setAuthMode("otp");
       toast.success("Verification code sent", {
@@ -165,27 +188,112 @@ export function AccountPage() {
     }
   };
 
-  const handleCreateAddress = (e: React.FormEvent) => {
+  const handleResendOtp = async () => {
+    if (!authEmail) return;
+    setIsSubmitting(true);
+    try {
+      await resendOtpMutation.mutateAsync({ email: authEmail.trim() });
+      toast.success("New verification code sent", {
+        description: `Check your inbox at ${authEmail}`,
+      });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to resend code";
+      toast.error("Resend failed", { description: msg });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleCreateAddress = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newAddr.fullName || !newAddr.line1 || !newAddr.pincode) {
+    if (
+      !newAddr.fullName?.trim() ||
+      !newAddr.line1?.trim() ||
+      !newAddr.city?.trim() ||
+      !newAddr.state?.trim() ||
+      !newAddr.pincode?.trim()
+    ) {
       toast.error("Please fill in all required address fields.");
       return;
     }
-    const addr: Address = {
-      id: `addr-${Date.now()}`,
-      fullName: newAddr.fullName ?? "",
-      phone: newAddr.phone ?? "+91 98204 41120",
-      line1: newAddr.line1 ?? "",
-      line2: newAddr.line2,
-      city: newAddr.city ?? "Mumbai",
-      state: newAddr.state ?? "Maharashtra",
-      pincode: newAddr.pincode ?? "400013",
-      isDefault: addresses.length === 0,
-    };
-    saveAddress(addr);
-    setIsAddingAddress(false);
-    setNewAddr({ fullName: "", phone: "", line1: "", line2: "", city: "", state: "", pincode: "" });
-    toast.success("New delivery address saved.");
+
+    const cleanPhone = (newAddr.phone ?? "").replace(/\D/g, "").slice(-10);
+    if (!cleanPhone || cleanPhone.length !== 10) {
+      toast.error("Please enter a valid 10-digit mobile number");
+      return;
+    }
+
+    const cleanPincode = (newAddr.pincode ?? "").replace(/\D/g, "").slice(0, 6);
+    if (!cleanPincode || cleanPincode.length !== 6) {
+      toast.error("Please enter a valid 6-digit PIN code");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      if (session && authStore.getToken()) {
+        await createAddressMutation.mutateAsync({
+          recipientName: newAddr.fullName.trim(),
+          phone: cleanPhone,
+          addressLine1: newAddr.line1.trim(),
+          addressLine2: newAddr.line2 ? newAddr.line2.trim() : null,
+          city: newAddr.city.trim(),
+          state: newAddr.state.trim(),
+          country: "India",
+          pincode: cleanPincode,
+          addressType: "HOME",
+          isDefault: currentAddresses.length === 0,
+        });
+      } else {
+        const addr: Address = {
+          id: `addr-${Date.now()}`,
+          fullName: newAddr.fullName.trim(),
+          phone: cleanPhone,
+          line1: newAddr.line1.trim(),
+          line2: newAddr.line2 ? newAddr.line2.trim() : undefined,
+          city: newAddr.city.trim(),
+          state: newAddr.state.trim(),
+          pincode: cleanPincode,
+          isDefault: currentAddresses.length === 0,
+        };
+        saveAddress(addr);
+      }
+
+      setIsAddingAddress(false);
+      setNewAddr({ fullName: "", phone: "", line1: "", line2: "", city: "", state: "", pincode: "" });
+      toast.success("New delivery address saved.");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to save address";
+      toast.error("Could not save address", { description: msg });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleSetDefaultAddress = async (id: string) => {
+    try {
+      if (session && authStore.getToken() && !id.startsWith("addr-")) {
+        await setDefaultAddressMutation.mutateAsync(id);
+      }
+      setDefaultAddress(id);
+      toast.success("Default address updated");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to update default address";
+      toast.error("Error", { description: msg });
+    }
+  };
+
+  const handleDeleteAddress = async (id: string) => {
+    try {
+      if (session && authStore.getToken() && !id.startsWith("addr-")) {
+        await deleteAddressMutation.mutateAsync(id);
+      }
+      deleteAddress(id);
+      toast.success("Address removed");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to delete address";
+      toast.error("Error", { description: msg });
+    }
   };
 
   // If not logged in, show elegant auth card (Login, Register, OTP verification)
@@ -328,10 +436,11 @@ export function AccountPage() {
 
                 <div>
                   <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground block mb-1">
-                    Mobile Phone (Optional)
+                    Mobile Phone *
                   </label>
                   <input
                     type="tel"
+                    required
                     value={authPhone}
                     onChange={(e) => setAuthPhone(e.target.value)}
                     placeholder="98204 41120"
@@ -403,10 +512,11 @@ export function AccountPage() {
                 <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-2">
                   <button
                     type="button"
-                    onClick={() => setAuthMode("register")}
-                    className="hover:underline"
+                    onClick={handleResendOtp}
+                    disabled={isSubmitting}
+                    className="text-foreground hover:underline font-semibold"
                   >
-                    ← Edit Details
+                    Resend Code
                   </button>
                   <button
                     type="button"
@@ -460,11 +570,16 @@ export function AccountPage() {
           shipping: 0,
           tax: 0,
           total: o.totalAmount,
+          shipmentStatus: o.shipmentStatus,
+          awbCode: o.awbCode,
+          courierName: o.courierName,
+          trackingUrl: o.trackingUrl,
+          currentLocation: o.currentLocation,
         }))
       : orders;
 
   const favoriteProducts = wishlist
-    .map((slug) => productService.bySlug(slug))
+    .map((slug) => getRegisteredProduct(slug) ?? productService.bySlug(slug))
     .filter((p): p is NonNullable<typeof p> => Boolean(p));
 
   const handleSignOut = () => {
@@ -555,7 +670,7 @@ export function AccountPage() {
 
               <div className="p-5 border border-border rounded-sm bg-[#FAF8F5]">
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Saved Addresses</p>
-                <p className="font-display text-2xl font-semibold text-foreground mt-2">{addresses.length}</p>
+                <p className="font-display text-2xl font-semibold text-foreground mt-2">{currentAddresses.length}</p>
                 <button
                   type="button"
                   onClick={() => setActiveTab("addresses")}
@@ -641,6 +756,83 @@ export function AccountPage() {
                         </div>
                       ))}
                     </div>
+
+                    {/* Shipment & Live Tracking Section */}
+                    {order.awbCode ? (
+                      <div className="p-4 sm:p-5 bg-gradient-to-r from-emerald-50/40 via-background to-secondary/20 border-t border-border space-y-3">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div className="flex items-center gap-2">
+                            <span className="p-1.5 rounded-full bg-emerald-100 text-emerald-800">
+                              <Truck className="h-4 w-4" />
+                            </span>
+                            <div>
+                              <span className="text-xs font-medium text-foreground">
+                                {order.courierName || "Courier Dispatch"}
+                              </span>
+                              <span className="text-[11px] text-muted-foreground ml-2 font-mono">
+                                AWB: {order.awbCode}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {order.shipmentStatus && (
+                              <span className="px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider bg-primary/10 text-primary">
+                                {order.shipmentStatus.replace(/_/g, " ")}
+                              </span>
+                            )}
+                            <a
+                              href={order.trackingUrl || `https://shiprocket.co/tracking/${order.awbCode}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+                            >
+                              Track Package <ExternalLink className="h-3 w-3" />
+                            </a>
+                          </div>
+                        </div>
+
+                        {order.currentLocation && (
+                          <p className="text-[11px] text-muted-foreground flex items-center gap-1.5">
+                            <MapPin className="h-3.5 w-3.5 text-primary" />
+                            <span>Current Location: <strong className="text-foreground">{order.currentLocation}</strong></span>
+                          </p>
+                        )}
+
+                        {/* Status Stepper */}
+                        <div className="pt-2">
+                          <div className="grid grid-cols-4 gap-2 text-center">
+                            {[
+                              { label: "Confirmed", done: true },
+                              { label: "Packed", done: ["PACKED", "PICKED_UP", "SHIPPED", "IN_TRANSIT", "OUT_FOR_DELIVERY", "DELIVERED"].includes(order.shipmentStatus?.toUpperCase() || "") || ["CONFIRMED", "SHIPPED", "DELIVERED"].includes(order.status.toUpperCase()) },
+                              { label: "In Transit", done: ["IN_TRANSIT", "OUT_FOR_DELIVERY", "DELIVERED"].includes(order.shipmentStatus?.toUpperCase() || "") || ["SHIPPED", "DELIVERED"].includes(order.status.toUpperCase()) },
+                              { label: "Delivered", done: ["DELIVERED"].includes(order.shipmentStatus?.toUpperCase() || "") || order.status.toUpperCase() === "DELIVERED" },
+                            ].map((step, sIdx) => (
+                              <div key={sIdx} className="space-y-1">
+                                <div
+                                  className={cn(
+                                    "h-1.5 rounded-full transition-all duration-300",
+                                    step.done ? "bg-emerald-600" : "bg-muted"
+                                  )}
+                                />
+                                <span className={cn(
+                                  "text-[10px] tracking-tight block",
+                                  step.done ? "font-semibold text-emerald-800 dark:text-emerald-400" : "text-muted-foreground"
+                                )}>
+                                  {step.label}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="px-5 py-2.5 bg-secondary/15 border-t border-border flex items-center justify-between text-[11px] text-muted-foreground">
+                        <span className="flex items-center gap-1.5">
+                          <Package className="h-3.5 w-3.5 text-muted-foreground" />
+                          <span>Status: Processing dispatch with courier partner</span>
+                        </span>
+                      </div>
+                    )}
 
                     <div className="px-5 py-3 bg-secondary/30 border-t border-border flex items-center justify-between text-[11px] text-muted-foreground">
                       <span>Paid via {order.paymentMethod}</span>
@@ -756,8 +948,29 @@ export function AccountPage() {
               </form>
             )}
 
+            {isAddressesLoading && (
+              <div className="py-8 text-center text-xs text-muted-foreground animate-pulse">
+                Loading saved delivery addresses...
+              </div>
+            )}
+
+            {!isAddressesLoading && currentAddresses.length === 0 && !isAddingAddress && (
+              <div className="border border-dashed border-border p-8 rounded-sm text-center bg-[#FAF8F5]/60 space-y-2">
+                <MapPin className="h-6 w-6 text-muted-foreground/60 mx-auto" />
+                <p className="text-sm font-semibold text-foreground">No saved addresses yet</p>
+                <p className="text-xs text-muted-foreground">Add your delivery address for faster checkout.</p>
+                <Button
+                  onClick={() => setIsAddingAddress(true)}
+                  size="sm"
+                  className="text-xs uppercase tracking-wider bg-ink text-ink-foreground mt-2"
+                >
+                  <Plus className="h-3.5 w-3.5 mr-1" /> Add Address
+                </Button>
+              </div>
+            )}
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {addresses.map((addr) => (
+              {currentAddresses.map((addr) => (
                 <div key={addr.id} className="border border-border p-5 rounded-sm bg-background relative flex flex-col justify-between">
                   <div>
                     <div className="flex items-center justify-between">
@@ -778,7 +991,7 @@ export function AccountPage() {
                     {!addr.isDefault && (
                       <button
                         type="button"
-                        onClick={() => setDefaultAddress(addr.id)}
+                        onClick={() => handleSetDefaultAddress(addr.id)}
                         className="text-amber-600 hover:underline font-medium"
                       >
                         Set as Default
@@ -786,7 +999,7 @@ export function AccountPage() {
                     )}
                     <button
                       type="button"
-                      onClick={() => deleteAddress(addr.id)}
+                      onClick={() => handleDeleteAddress(addr.id)}
                       className="text-muted-foreground hover:text-destructive transition-colors ml-auto"
                       aria-label="Delete address"
                     >

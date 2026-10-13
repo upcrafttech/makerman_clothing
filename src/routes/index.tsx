@@ -13,7 +13,7 @@ import {
   Sparkles,
   Truck,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { toast } from "sonner";
 
 import { ProductCard, ProductCardSkeleton } from "@/components/product/product-card";
@@ -22,7 +22,7 @@ import { formatINR } from "@/lib/format";
 import { useShop } from "@/lib/shop-store";
 import { cn } from "@/lib/utils";
 import { productService } from "@/services";
-import { useProducts } from "@/hooks/use-api";
+import { useProducts, useCategories } from "@/hooks/use-api";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -44,8 +44,27 @@ export function HomePage() {
   const [newsletterEmail, setNewsletterEmail] = useState("");
   const [activeHotspot, setActiveHotspot] = useState<string | null>(null);
 
-  const { data: arrivalsData, isLoading: arrivalsLoading } = useProducts({ sort: "newest", size: 6 });
-  const newArrivals = arrivalsData?.content ?? [];
+  const { data: productsData, isLoading: productsLoading } = useProducts({ size: 40 });
+  const allProducts = useMemo(() => productsData?.content ?? [], [productsData]);
+
+  const featuredProducts = useMemo(() => {
+    const list = allProducts.filter(
+      (p) => p.collections?.includes("featured") || p.badge === "Featured"
+    );
+    if (list.length > 0) return list.slice(0, 8);
+    return allProducts.slice(0, 8);
+  }, [allProducts]);
+
+  const newArrivals = useMemo(() => {
+    const list = allProducts.filter(
+      (p) => p.collections?.includes("new-arrivals") || p.badge === "New"
+    );
+    if (list.length > 0) return list.slice(0, 8);
+    return allProducts.slice(0, 8);
+  }, [allProducts]);
+
+  const { data: categoriesData } = useCategories();
+  const categories = categoriesData ?? [];
 
   // Look pieces for "Shop The Look"
   const lookHotspots = [
@@ -88,7 +107,7 @@ export function HomePage() {
       toast.success("Complete look added to your bag", {
         description: `${addedCount} garments added to your shopping bag.`,
       });
-    } else if (newArrivals.length > 0) {
+    } else if (newArrivals[0]) {
       const first = newArrivals[0];
       addToCart(first.slug, first.sizes[0] ?? "M", first.colors[0]?.name ?? "Natural", 1);
       toast.success("Garment added to your bag", {
@@ -151,8 +170,8 @@ export function HomePage() {
                 asChild
                 className="h-12 sm:h-13 px-8 text-xs font-semibold uppercase tracking-[0.16em] bg-white text-[#171717] hover:bg-white/90 rounded-sm shadow-md"
               >
-                <Link to="/store" search={{ gender: "men" }}>
-                  Shop Men
+                <Link to="/store" search={{ collection: "featured" }}>
+                  Featured Pieces
                 </Link>
               </Button>
               <Button
@@ -160,8 +179,8 @@ export function HomePage() {
                 variant="outline"
                 className="h-12 sm:h-13 px-8 text-xs font-semibold uppercase tracking-[0.16em] text-white border-white/50 hover:bg-white/15 hover:border-white rounded-sm"
               >
-                <Link to="/store" search={{ gender: "women" }}>
-                  Shop Women
+                <Link to="/store">
+                  Explore Store
                 </Link>
               </Button>
             </div>
@@ -194,7 +213,129 @@ export function HomePage() {
       </section>
 
       {/* ==========================================================
-          SECTION 3 — NEW ARRIVALS
+          SECTION 3 — FEATURED PRODUCTS
+          ========================================================== */}
+      <section className="section-y bg-background border-b border-border/60">
+        <div className="container-page">
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-8 md:mb-12 gap-4 border-b border-border/60 pb-5">
+            <div>
+              <p className="eyebrow text-amber-600 font-semibold tracking-widest">
+                Curated Highlights
+              </p>
+              <h2 className="mt-1 font-display text-2xl sm:text-4xl text-foreground font-normal">
+                Featured Pieces
+              </h2>
+              <p className="mt-1.5 text-xs text-muted-foreground">
+                Signature essentials chosen for timeless proportions and superior comfort.
+              </p>
+            </div>
+            <div>
+              <Link
+                to="/store"
+                search={{ collection: "featured" }}
+                className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-foreground hover:text-amber-600 transition-colors"
+              >
+                <span>View All Featured</span>
+                <ArrowRight className="h-3.5 w-3.5" />
+              </Link>
+            </div>
+          </div>
+
+          {/* Product Grid */}
+          {productsLoading ? (
+            <div className="grid grid-cols-2 gap-x-3 gap-y-8 sm:gap-x-6 sm:gap-y-12 lg:grid-cols-3 xl:grid-cols-4">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <ProductCardSkeleton key={i} />
+              ))}
+            </div>
+          ) : featuredProducts.length > 0 ? (
+            <div className="grid grid-cols-2 gap-x-3 gap-y-8 sm:gap-x-6 sm:gap-y-12 lg:grid-cols-3 xl:grid-cols-4">
+              {featuredProducts.map((product, idx) => (
+                <ProductCard
+                  key={product.slug}
+                  product={product}
+                  priority={idx < 4}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="py-12 text-center text-muted-foreground text-xs sm:text-sm">
+              Explore our full collection in the store.
+            </div>
+          )}
+
+          {/* Mobile view all CTA button */}
+          <div className="mt-8 text-center sm:hidden">
+            <Button
+              asChild
+              variant="outline"
+              className="w-full h-12 text-xs font-semibold uppercase tracking-wider border-border"
+            >
+              <Link to="/store" search={{ collection: "featured" }}>
+                View All Featured ({featuredProducts.length})
+              </Link>
+            </Button>
+          </div>
+        </div>
+      </section>
+
+      {/* ==========================================================
+          SECTION 4 — CATEGORY EDIT
+          ========================================================== */}
+      <section className="bg-[#FAF8F5] border-b border-border/80 py-14 sm:py-20">
+        <div className="container-page">
+          <div className="text-center max-w-xl mx-auto mb-10">
+            <p className="eyebrow text-amber-600 font-semibold tracking-widest">
+              Curated Wardrobes
+            </p>
+            <h2 className="mt-1 font-display text-2xl sm:text-4xl text-foreground font-normal">
+              Category Edit
+            </h2>
+            <p className="mt-2 text-xs text-muted-foreground">
+              Distinct cuts and tailored blocks built for everyday wear.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
+            {(categories.length > 0
+              ? categories.slice(0, 4)
+              : [
+                  { id: "shirts", name: "Shirts", imageUrl: "/images/p-shirt-1.jpg" },
+                  { id: "pants", name: "Trousers & Jeans", imageUrl: "/images/p-trousers-1.jpg" },
+                  { id: "tees", name: "Heavyweight Tees", imageUrl: "/images/p-tshirt-1.jpg" },
+                  { id: "jackets", name: "Outerwear & Layers", imageUrl: "/images/look-1.jpg" },
+                ]
+            ).map((cat) => (
+              <div key={cat.id} className="group relative aspect-[3/4] overflow-hidden bg-secondary rounded-sm">
+                <img
+                  src={cat.imageUrl || "/images/p-shirt-1.jpg"}
+                  alt={cat.name}
+                  className="h-full w-full object-cover object-center transition-transform duration-700 ease-out group-hover:scale-105"
+                  loading="lazy"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                <div className="absolute inset-x-0 bottom-0 p-4 sm:p-6 text-white text-center">
+                  <h3 className="font-display text-base sm:text-xl text-white font-normal mb-3">
+                    {cat.name}
+                  </h3>
+                  <Button
+                    asChild
+                    size="sm"
+                    className="h-8 px-4 text-[0.625rem] font-semibold uppercase tracking-[0.14em] bg-white text-ink hover:bg-white/90 rounded-sm shadow-sm"
+                  >
+                    <Link to="/store" search={{ category: cat.id }}>
+                      Shop Now
+                    </Link>
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ==========================================================
+          SECTION 5 — NEW ARRIVALS
           ========================================================== */}
       <section className="section-y bg-background">
         <div className="container-page">
@@ -220,7 +361,7 @@ export function HomePage() {
           </div>
 
           {/* Product Grid: 2 columns on mobile, 4 columns on desktop */}
-          {arrivalsLoading ? (
+          {productsLoading ? (
             <div className="grid grid-cols-2 gap-x-3 gap-y-8 sm:gap-x-6 sm:gap-y-12 lg:grid-cols-3 xl:grid-cols-4">
               {Array.from({ length: 4 }).map((_, i) => (
                 <ProductCardSkeleton key={i} />
@@ -253,82 +394,6 @@ export function HomePage() {
                 View All New Arrivals ({newArrivals.length})
               </Link>
             </Button>
-          </div>
-        </div>
-      </section>
-
-      {/* ==========================================================
-          SECTION 4 — CATEGORY EDIT (MEN & WOMEN)
-          ========================================================== */}
-      <section className="bg-[#FAF8F5] border-y border-border/80 py-14 sm:py-20">
-        <div className="container-page">
-          <div className="text-center max-w-xl mx-auto mb-10">
-            <p className="eyebrow text-amber-600 font-semibold tracking-widest">
-              Curated Wardrobes
-            </p>
-            <h2 className="mt-1 font-display text-2xl sm:text-4xl text-foreground font-normal">
-              Category Edit
-            </h2>
-            <p className="mt-2 text-xs text-muted-foreground">
-              Distinct cuts and tailored blocks built for everyday wear.
-            </p>
-          </div>
-
-          {/* 2-Column Desktop, Stacked Mobile */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
-            {/* Men's Category */}
-            <div className="group relative aspect-[4/5] sm:aspect-[3/4] overflow-hidden bg-secondary rounded-sm">
-              <img
-                src="/images/p-shirt-1.jpg"
-                alt="Makerman Men's Wardrobe"
-                className="h-full w-full object-cover object-center transition-transform duration-700 ease-out group-hover:scale-105"
-                loading="lazy"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-              <div className="absolute inset-x-0 bottom-0 p-6 sm:p-10 text-white">
-                <p className="text-[0.6875rem] uppercase tracking-widest text-white/80 font-medium mb-1">
-                  Tailored & Relaxed
-                </p>
-                <h3 className="font-display text-2xl sm:text-4xl text-white font-normal mb-4">
-                  Men's Collection
-                </h3>
-                <Button
-                  asChild
-                  className="h-11 px-6 text-xs font-semibold uppercase tracking-[0.14em] bg-white text-ink hover:bg-white/90 rounded-sm shadow-sm"
-                >
-                  <Link to="/store" search={{ gender: "men" }}>
-                    Shop Men
-                  </Link>
-                </Button>
-              </div>
-            </div>
-
-            {/* Women's Category */}
-            <div className="group relative aspect-[4/5] sm:aspect-[3/4] overflow-hidden bg-secondary rounded-sm">
-              <img
-                src="/images/p-dress-1.jpg"
-                alt="Makerman Women's Wardrobe"
-                className="h-full w-full object-cover object-center transition-transform duration-700 ease-out group-hover:scale-105"
-                loading="lazy"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-              <div className="absolute inset-x-0 bottom-0 p-6 sm:p-10 text-white">
-                <p className="text-[0.6875rem] uppercase tracking-widest text-white/80 font-medium mb-1">
-                  Fluid & Considered
-                </p>
-                <h3 className="font-display text-2xl sm:text-4xl text-white font-normal mb-4">
-                  Women's Collection
-                </h3>
-                <Button
-                  asChild
-                  className="h-11 px-6 text-xs font-semibold uppercase tracking-[0.14em] bg-white text-ink hover:bg-white/90 rounded-sm shadow-sm"
-                >
-                  <Link to="/store" search={{ gender: "women" }}>
-                    Shop Women
-                  </Link>
-                </Button>
-              </div>
-            </div>
           </div>
         </div>
       </section>

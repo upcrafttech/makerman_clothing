@@ -1,5 +1,5 @@
-import type { ApiProduct } from "@/types/api";
-import type { Product, ColorOption } from "@/types";
+import type { ApiProduct, ApiCustomerAddress } from "@/types/api";
+import type { Product, ColorOption, Address } from "@/types";
 
 // Runtime registry of live adapted products
 const productRegistry = new Map<string, Product>();
@@ -95,9 +95,25 @@ export function adaptProduct(api: ApiProduct): Product {
 
   const daysOld =
     (Date.now() - new Date(api.createdAt || Date.now()).getTime()) / 86_400_000;
+  const isNewArrival =
+    meta("isNewArrival") === "true" ||
+    meta("newArrival") === "true";
+  const isFeatured =
+    meta("isFeatured") === "true" ||
+    meta("featured") === "true";
+
+  const rawCollections =
+    meta("collections")?.split(",").map((c) => c.trim()).filter(Boolean) ?? [];
+  if (isNewArrival && !rawCollections.includes("new-arrivals")) {
+    rawCollections.push("new-arrivals");
+  }
+  if (isFeatured && !rawCollections.includes("featured")) {
+    rawCollections.push("featured");
+  }
+
   const badgeRaw = meta("badge") as Product["badge"];
   const badge: Product["badge"] =
-    badgeRaw ?? (daysOld < 30 ? "New" : undefined);
+    badgeRaw ?? (isNewArrival || daysOld < 30 ? "New" : isFeatured ? "Featured" : undefined);
 
   const adapted: Product = {
     id: api.id,
@@ -109,7 +125,7 @@ export function adaptProduct(api: ApiProduct): Product {
       (api.categoryId ? categoryRegistry.get(api.categoryId) : undefined) ??
       "Clothing",
     gender,
-    collections: meta("collections")?.split(",").map((c) => c.trim()).filter(Boolean) ?? [],
+    collections: rawCollections,
     price: Number(api.price || 0),
     compareAtPrice: api.comparePrice ? Number(api.comparePrice) : undefined,
     shortDescription: api.description ? api.description.slice(0, 140) : "",
@@ -145,3 +161,18 @@ export function adaptProduct(api: ApiProduct): Product {
 
   return adapted;
 }
+
+export function adaptCustomerAddress(api: ApiCustomerAddress): Address {
+  return {
+    id: api.id,
+    fullName: api.recipientName,
+    phone: api.phone,
+    line1: api.addressLine1,
+    line2: api.addressLine2 || undefined,
+    city: api.city,
+    state: api.state,
+    pincode: api.pincode,
+    isDefault: Boolean(api.isDefault),
+  };
+}
+

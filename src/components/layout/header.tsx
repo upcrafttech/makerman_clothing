@@ -9,7 +9,8 @@ import { cn } from "@/lib/utils";
 
 type NavItem = {
   label: string;
-  to: "/store";
+  to: "/" | "/store";
+  exact?: boolean;
   search?: {
     gender?: "all" | "women" | "men";
     collection?: string;
@@ -17,16 +18,15 @@ type NavItem = {
 };
 
 const NAV_ITEMS: NavItem[] = [
+  { label: "HOME", to: "/", exact: true },
   { label: "STORE", to: "/store" },
-  { label: "MEN", to: "/store", search: { gender: "men" } },
-  { label: "WOMEN", to: "/store", search: { gender: "women" } },
   { label: "NEW ARRIVALS", to: "/store", search: { collection: "new-arrivals" } },
 ];
 
 export function Header() {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const { cartCount, wishlist, setCartOpen, setSearchOpen } = useShop();
+  const { cartCount, wishlist, setCartOpen, setSearchOpen, storeInfo } = useShop();
   const currentPath = useRouterState({ select: (s) => s.location.pathname });
 
   // Close mobile drawer on route change
@@ -95,6 +95,7 @@ export function Header() {
                   <Link
                     key={item.label}
                     to={item.to}
+                    activeOptions={item.exact ? { exact: true } : undefined}
                     className={cn(
                       "text-xs uppercase font-medium tracking-[0.16em] text-foreground/80 hover:text-foreground transition-colors relative py-1.5",
                       "after:content-[''] after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[1.5px] after:bg-foreground after:scale-x-0 hover:after:scale-x-100 after:transition-transform after:origin-left",
@@ -235,13 +236,6 @@ export function Header() {
               <p className="px-3 text-[0.625rem] uppercase font-semibold tracking-widest text-muted-foreground mb-2">
                 Navigation
               </p>
-              <Link
-                to="/"
-                onClick={() => setMenuOpen(false)}
-                className="flex items-center h-11 px-3 text-sm font-medium tracking-wider text-foreground hover:bg-secondary rounded-sm transition-colors"
-              >
-                HOME
-              </Link>
               {NAV_ITEMS.map((item) =>
                 item.search ? (
                   <Link
@@ -332,11 +326,11 @@ export function Header() {
             </p>
             <div className="mt-2 flex items-center justify-between text-xs text-foreground">
               <a
-                href={`tel:${BRAND.phone.replace(/\s+/g, "")}`}
+                href={`tel:${storeInfo.phone.replace(/\s+/g, "")}`}
                 className="inline-flex items-center gap-1.5 hover:underline"
               >
                 <Phone className="h-3.5 w-3.5" />
-                {BRAND.phone}
+                {storeInfo.phone}
               </a>
               <span className="text-muted-foreground">10am–7pm IST</span>
             </div>

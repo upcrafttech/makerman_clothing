@@ -1,10 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiFetch } from "@/lib/api-client";
+import { apiFetch, BUSINESS_ID } from "@/lib/api-client";
 import {
   adaptProduct,
   registerProducts,
   getRegisteredProduct,
   registerCategories,
+  adaptCustomerAddress,
 } from "@/lib/adapters";
 import { authStore } from "@/lib/auth-store";
 import type {
@@ -16,18 +17,21 @@ import type {
   ApiOrder,
   ApiReview,
   ApiProduct,
+  ApiCustomerAddress,
+  ApiCustomerAddressRequest,
+  ApiStoreProfile,
 } from "@/types/api";
-import type { Product } from "@/types";
+import type { Product, Address } from "@/types";
 
 /* ── Products ──────────────────────────────── */
 export function useProducts(
   params: {
-    page?: number;
-    size?: number;
-    search?: string;
-    categoryId?: string;
-    sort?: string;
-    status?: string;
+    page?: number | undefined;
+    size?: number | undefined;
+    search?: string | undefined;
+    categoryId?: string | undefined;
+    sort?: string | undefined;
+    status?: string | undefined;
   } = {},
 ) {
   const page = params.page ?? 0;
@@ -41,8 +45,8 @@ export function useProducts(
     sort,
     status,
   };
-  if (params.search?.trim()) qsObj.search = params.search.trim();
-  if (params.categoryId && params.categoryId !== "all") qsObj.categoryId = params.categoryId;
+  if (params.search?.trim()) qsObj["search"] = params.search.trim();
+  if (params.categoryId && params.categoryId !== "all") qsObj["categoryId"] = params.categoryId;
 
   const qs = new URLSearchParams(qsObj).toString();
 
@@ -171,7 +175,7 @@ export function useLogin() {
 
 export function useRegister() {
   return useMutation({
-    mutationFn: (b: { name: string; email: string; password: string; phone?: string }) =>
+    mutationFn: (b: { name: string; email: string; password: string; phone: string }) =>
       apiFetch<{ message: string; email: string }>("/auth/register", {
         method: "POST",
         body: JSON.stringify({ ...b, role: "CUSTOMER" }),
@@ -185,6 +189,16 @@ export function useVerifyOtp() {
       apiFetch<ApiAuthResponse>("/auth/verify-otp", {
         method: "POST",
         body: JSON.stringify({ email, otp }),
+      }),
+  });
+}
+
+export function useResendOtp() {
+  return useMutation({
+    mutationFn: ({ email }: { email: string }) =>
+      apiFetch<{ message: string }>("/auth/resend-otp", {
+        method: "POST",
+        body: JSON.stringify({ email }),
       }),
   });
 }
@@ -260,6 +274,26 @@ export function useRemoveCartItem() {
         method: "DELETE",
         token,
       }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["api-cart"] }),
+  });
+}
+
+export function useClearCartItems() {
+  const qc = useQueryClient();
+  const token = authStore.getToken();
+
+  return useMutation({
+    mutationFn: async () => {
+      if (!token) return;
+      const cart = await apiFetch<ApiCart>("/cart", { token });
+      if (cart?.items?.length) {
+        await Promise.allSettled(
+          cart.items.map((item) =>
+            apiFetch<void>(`/cart/items/${item.id}`, { method: "DELETE", token }),
+          ),
+        );
+      }
+    },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["api-cart"] }),
   });
 }
@@ -342,7 +376,7 @@ export interface RazorpayOrderResponse {
 
 export function useCreateRazorpayOrder() {
   return useMutation({
-    mutationFn: (body: { amount: number; receipt?: string; platformOrderId?: string }) =>
+    mutationFn: (body: { amount: number; receipt?: string | undefined; platformOrderId?: string | undefined }) =>
       apiFetch<RazorpayOrderResponse>("/payment/create-order", {
         method: "POST",
         body: JSON.stringify(body),
@@ -356,7 +390,7 @@ export function useVerifyRazorpayPayment() {
       razorpayOrderId: string;
       razorpayPaymentId: string;
       razorpaySignature: string;
-      platformOrderId?: string;
+      platformOrderId?: string | undefined;
     }) =>
       apiFetch<{ message: string }>("/payment/verify", {
         method: "POST",
@@ -364,4 +398,113 @@ export function useVerifyRazorpayPayment() {
       }),
   });
 }
+
+/* ── Customer Addresses ────────────────────── */
+export function useCustomerAddresses() {
+  const token = authStore.getToken();
+  return useQuery<Address[]>({
+    queryKey: ["customer-addresses"],
+    queryFn: async () => {
+      const res = await apiFetch<{
+        success: boolean;
+        message?: string;
+        data: ApiCustomerAddress[];
+      }>("/customer/addresses/all", { token });
+      return (res?.data ?? []).map(adaptCustomerAddress);
+    },
+    enabled: Boolean(token),
+  });
+}
+
+export function useCreateCustomerAddress() {
+  const qc = useQueryClient();
+  const token = authStore.getToken();
+
+  return useMutation({
+    mutationFn: (body: ApiCustomerAddressRequest) =>
+      apiFetch<{ success: boolean; data: ApiCustomerAddress }>("/customer/addresses", {
+        method: "POST",
+        token,
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["customer-addresses"] });
+    },
+  });
+}
+
+export function useUpdateCustomerAddress() {
+  const qc = useQueryClient();
+  const token = authStore.getToken();
+
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: ApiCustomerAddressRequest }) =>
+      apiFetch<{ success: boolean; data: ApiCustomerAddress }>(`/customer/addresses/${id}`, {
+        method: "PUT",
+        token,
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["customer-addresses"] });
+    },
+  });
+}
+
+export function useDeleteCustomerAddress() {
+  const qc = useQueryClient();
+  const token = authStore.getToken();
+
+  return useMutation({
+    mutationFn: (addressId: string) =>
+      apiFetch<{ success: boolean }>(`/customer/addresses/${addressId}`, {
+        method: "DELETE",
+        token,
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["customer-addresses"] });
+    },
+  });
+}
+
+export function useSetDefaultCustomerAddress() {
+  const qc = useQueryClient();
+  const token = authStore.getToken();
+
+  return useMutation({
+    mutationFn: (addressId: string) =>
+      apiFetch<{ success: boolean; data: ApiCustomerAddress }>(`/customer/addresses/${addressId}/default`, {
+        method: "PATCH",
+        token,
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["customer-addresses"] });
+    },
+  });
+}
+
+/* ── Store Profile (public tenant info) ─────── */
+export function useStoreProfile() {
+  return useQuery({
+    queryKey: ["store-profile"],
+    queryFn: async () => {
+      try {
+        return await apiFetch<ApiStoreProfile>("/businesses/store-profile");
+      } catch {
+        const businesses = await apiFetch<any[]>("/businesses");
+        if (Array.isArray(businesses)) {
+          const match =
+            businesses.find((b) => b.id === BUSINESS_ID) ||
+            businesses.find((b) => b.name?.toLowerCase().includes("makerman")) ||
+            businesses[0];
+          if (match) return match as ApiStoreProfile;
+        }
+        throw new Error("No store profile found");
+      }
+    },
+    staleTime: 1000 * 60 * 30, // 30 mins
+    gcTime: 1000 * 60 * 60 * 24, // 24 hours
+  });
+}
+
+
 

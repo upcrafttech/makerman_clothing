@@ -77,8 +77,8 @@ export function StorePage() {
   const activeQuery = search.query;
 
   const { data: apiData, isLoading } = useProducts({
-    search: activeQuery,
-    sort: activeSort === "newest" ? "newest" : undefined,
+    ...(activeQuery ? { search: activeQuery } : {}),
+    ...(activeSort === "newest" ? { sort: "newest" } : {}),
   });
 
   const { data: apiCategories } = useCategories();
@@ -171,57 +171,13 @@ export function StorePage() {
             <h1 className="mt-2 font-display text-3xl sm:text-4xl lg:text-5xl font-normal tracking-tight text-foreground">
               {activeCollection === "new-arrivals"
                 ? "New Arrivals"
-                : activeGender === "men"
-                  ? "Men's Wardrobe"
-                  : activeGender === "women"
-                    ? "Women's Wardrobe"
-                    : activeCategory
-                      ? (categories.find((c) => c.slug === activeCategory || c.label.toLowerCase() === activeCategory.toLowerCase())?.label ?? "Curated Store")
-                      : "The Complete Store"}
+                : activeCategory
+                  ? (categories.find((c) => c.slug === activeCategory || c.label.toLowerCase() === activeCategory.toLowerCase())?.label ?? "Curated Store")
+                  : "The Complete Store"}
             </h1>
             <p className="mt-3 text-xs sm:text-sm text-muted-foreground leading-relaxed">
               Quiet proportions, honest materials, and durable construction designed for everyday ease.
             </p>
-          </div>
-
-          {/* Quick Category Tabs */}
-          <div className="mt-8 flex flex-wrap items-center gap-2 border-t border-border/60 pt-6">
-            {[
-              { label: "All Garments", gender: "all", collection: undefined },
-              { label: "New Arrivals", gender: undefined, collection: "new-arrivals" },
-              { label: "Men", gender: "men", collection: undefined },
-              { label: "Women", gender: "women", collection: undefined },
-            ].map((tab) => {
-              const isSelected =
-                tab.collection
-                  ? activeCollection === tab.collection
-                  : tab.gender === activeGender && !activeCollection;
-
-              return (
-                <button
-                  key={tab.label}
-                  type="button"
-                  onClick={() => {
-                    navigate({
-                      search: (prev) => ({
-                        ...prev,
-                        gender: tab.gender as "all" | "women" | "men" | undefined,
-                        collection: tab.collection,
-                        category: undefined,
-                      }),
-                    });
-                  }}
-                  className={cn(
-                    "h-9 px-4 text-xs font-medium uppercase tracking-wider rounded-sm transition-all select-none",
-                    isSelected
-                      ? "bg-foreground text-background shadow-xs font-semibold"
-                      : "bg-surface border border-border/80 text-foreground/80 hover:bg-secondary",
-                  )}
-                >
-                  {tab.label}
-                </button>
-              );
-            })}
           </div>
         </div>
       </section>
@@ -304,6 +260,83 @@ export function StorePage() {
                   >
                     <span>{cat.label}</span>
                     {activeCategory === cat.slug && <Check className="h-3.5 w-3.5 text-foreground" />}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Gender Filter */}
+            <div className="border-t border-border/60 pt-5 space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-[0.6875rem] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Audience / Gender
+                </p>
+                {activeGender !== "all" && (
+                  <button
+                    type="button"
+                    onClick={() => updateParam("gender", undefined)}
+                    className="text-[0.625rem] text-muted-foreground hover:text-foreground"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {[
+                  { label: "All", value: "all" },
+                  { label: "Men", value: "men" },
+                  { label: "Women", value: "women" },
+                ].map((g) => (
+                  <button
+                    key={g.value}
+                    type="button"
+                    onClick={() => updateParam("gender", activeGender === g.value ? undefined : g.value)}
+                    className={cn(
+                      "h-8 px-3 text-xs font-medium rounded-xs border transition-colors",
+                      activeGender === g.value
+                        ? "border-foreground bg-foreground text-background font-semibold"
+                        : "border-border/80 bg-surface text-foreground/80 hover:border-foreground/40",
+                    )}
+                  >
+                    {g.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Highlights / Collections */}
+            <div className="border-t border-border/60 pt-5 space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-[0.6875rem] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Highlights
+                </p>
+                {activeCollection && (
+                  <button
+                    type="button"
+                    onClick={() => updateParam("collection", undefined)}
+                    className="text-[0.625rem] text-muted-foreground hover:text-foreground"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {[
+                  { label: "New Arrivals", value: "new-arrivals" },
+                  { label: "Featured", value: "featured" },
+                ].map((item) => (
+                  <button
+                    key={item.value}
+                    type="button"
+                    onClick={() => updateParam("collection", activeCollection === item.value ? undefined : item.value)}
+                    className={cn(
+                      "h-8 px-3 text-xs font-medium rounded-xs border transition-colors",
+                      activeCollection === item.value
+                        ? "border-foreground bg-foreground text-background font-semibold"
+                        : "border-border/80 bg-surface text-foreground/80 hover:border-foreground/40",
+                    )}
+                  >
+                    {item.label}
                   </button>
                 ))}
               </div>
@@ -408,7 +441,7 @@ export function StorePage() {
                 </span>
                 {activeCategory && (
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs bg-secondary text-foreground rounded-sm">
-                    {CATEGORIES.find((c) => c.slug === activeCategory)?.label ?? activeCategory}
+                    {categories.find((c: { slug: string; label: string }) => c.slug === activeCategory)?.label ?? activeCategory}
                     <button type="button" onClick={() => updateParam("category", undefined)}>
                       <X className="h-3 w-3" />
                     </button>
@@ -538,6 +571,61 @@ export function StorePage() {
                     )}
                   >
                     {cat.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Gender in Drawer */}
+            <div className="border-t border-border pt-4">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+                Audience / Gender
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { label: "All", value: "all" },
+                  { label: "Men", value: "men" },
+                  { label: "Women", value: "women" },
+                ].map((g) => (
+                  <button
+                    key={g.value}
+                    type="button"
+                    onClick={() => updateParam("gender", activeGender === g.value ? undefined : g.value)}
+                    className={cn(
+                      "h-9 px-3 text-xs rounded-sm border transition-colors",
+                      activeGender === g.value
+                        ? "bg-foreground text-background font-semibold border-foreground"
+                        : "bg-surface border-border text-foreground/80",
+                    )}
+                  >
+                    {g.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Highlights in Drawer */}
+            <div className="border-t border-border pt-4">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+                Highlights
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { label: "New Arrivals", value: "new-arrivals" },
+                  { label: "Featured", value: "featured" },
+                ].map((item) => (
+                  <button
+                    key={item.value}
+                    type="button"
+                    onClick={() => updateParam("collection", activeCollection === item.value ? undefined : item.value)}
+                    className={cn(
+                      "h-9 px-3 text-xs rounded-sm border transition-colors",
+                      activeCollection === item.value
+                        ? "bg-foreground text-background font-semibold border-foreground"
+                        : "bg-surface border-border text-foreground/80",
+                    )}
+                  >
+                    {item.label}
                   </button>
                 ))}
               </div>

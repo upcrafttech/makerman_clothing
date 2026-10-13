@@ -11,11 +11,17 @@ export default defineConfig({
     server: {
       proxy: {
         "/api": {
-          target: "http://localhost:8080",
+          target: "https://dashboard.upcraft.tech",
           changeOrigin: true,
+          secure: true,
         },
       },
     },
+  },
+  nitro: {
+    preset:
+      process.env["NITRO_PRESET"] ||
+      (process.env["NETLIFY"] ? "netlify" : "cloudflare-module"),
   },
   tanstackStart: {
     // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).

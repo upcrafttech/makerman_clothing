@@ -11,7 +11,7 @@ import {
   Truck,
   Wallet,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 
 import { MakermanLogo } from "@/components/layout/makerman-logo";
@@ -20,7 +20,13 @@ import { cartTotals, formatINR } from "@/lib/format";
 import { useShop } from "@/lib/shop-store";
 import { cn } from "@/lib/utils";
 import { productService } from "@/services";
-import { useCreateOrder, useCreateRazorpayOrder, useVerifyRazorpayPayment, useProducts } from "@/hooks/use-api";
+import {
+  useCreateOrder,
+  useCreateRazorpayOrder,
+  useVerifyRazorpayPayment,
+  useProducts,
+  useCustomerAddresses,
+} from "@/hooks/use-api";
 import { authStore } from "@/lib/auth-store";
 import { getRegisteredProduct } from "@/lib/adapters";
 import { openRazorpayCheckout } from "@/lib/razorpay";
@@ -39,22 +45,34 @@ export const Route = createFileRoute("/checkout")({
 
 export function CheckoutPage() {
   const { cart, subtotal, addresses, placeOrder, clearCart } = useShop();
+  const { data: apiAddresses } = useCustomerAddresses();
+
+  const availableAddresses = (apiAddresses && apiAddresses.length > 0 ? apiAddresses : addresses).filter(
+    (a) => a.id !== "addr-1" && a.id !== "addr-2" && a.fullName !== "Aarav Deshpande",
+  );
 
   const [step, setStep] = useState<2 | 3 | 4>(2);
-  const [selectedAddressId, setSelectedAddressId] = useState(addresses[0]?.id ?? "new");
+  const [selectedAddressId, setSelectedAddressId] = useState<string>("new");
   const [shippingMethod, setShippingMethod] = useState<"standard" | "express">("standard");
   const [paymentMethod, setPaymentMethod] = useState<"upi" | "card" | "netbanking" | "cod">("upi");
   const [confirmedOrder, setConfirmedOrder] = useState<Order | null>(null);
 
+  useEffect(() => {
+    if (availableAddresses.length > 0 && selectedAddressId === "new") {
+      const def = availableAddresses.find((a) => a.isDefault) ?? availableAddresses[0];
+      if (def) setSelectedAddressId(def.id);
+    }
+  }, [availableAddresses]);
+
   // Address form fields with Indian localization defaults
   const [newAddress, setNewAddress] = useState<Partial<Address>>({
-    fullName: "Aarav Deshpande",
-    phone: "+91 98204 41120",
-    line1: "Flat 402, Signature Towers, Worli",
-    line2: "Near Lower Parel Studio",
-    city: "Mumbai",
-    state: "Maharashtra",
-    pincode: "400018",
+    fullName: "",
+    phone: "",
+    line1: "",
+    line2: "",
+    city: "",
+    state: "",
+    pincode: "",
   });
 
   const activeLines = cart.filter((l) => !l.savedForLater);
@@ -63,15 +81,15 @@ export function CheckoutPage() {
   const finalTotal = total + shippingExtra;
 
   const currentAddress: Address =
-    addresses.find((a) => a.id === selectedAddressId) ?? {
+    availableAddresses.find((a) => a.id === selectedAddressId) ?? {
       id: "addr-custom",
-      fullName: newAddress.fullName ?? "Guest Customer",
-      phone: newAddress.phone ?? "+91 98204 41120",
-      line1: newAddress.line1 ?? "Kamala Mills",
+      fullName: newAddress.fullName || "Guest Customer",
+      phone: newAddress.phone || "9820441120",
+      line1: newAddress.line1 || "Kamala Mills",
       line2: newAddress.line2,
-      city: newAddress.city ?? "Mumbai",
-      state: newAddress.state ?? "Maharashtra",
-      pincode: newAddress.pincode ?? "400013",
+      city: newAddress.city || "Mumbai",
+      state: newAddress.state || "Maharashtra",
+      pincode: newAddress.pincode || "400013",
       isDefault: false,
     };
 
@@ -385,7 +403,7 @@ export function CheckoutPage() {
                 <div className="space-y-6">
                   {/* Saved addresses selector */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {addresses.map((addr) => (
+                    {availableAddresses.map((addr) => (
                       <label
                         key={addr.id}
                         onClick={() => setSelectedAddressId(addr.id)}
@@ -661,7 +679,8 @@ export function CheckoutPage() {
 
               <div className="divide-y divide-border/60 max-h-60 overflow-y-auto pr-1">
                 {activeLines.map((line) => {
-                  const product = productService.bySlug(line.productSlug);
+                  const product =
+                    getRegisteredProduct(line.productSlug) ?? productService.bySlug(line.productSlug);
                   if (!product) return null;
 
                   return (

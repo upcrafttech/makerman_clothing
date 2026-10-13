@@ -15,6 +15,8 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { BRAND, faqs } from "@/data/content";
+import { useStoreInfo } from "@/lib/shop-store";
+import { formatPhoneDisplay, getWhatsAppHref, getTelHref, getMailtoHref } from "@/lib/contact";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/contact")({
@@ -33,6 +35,11 @@ export const Route = createFileRoute("/contact")({
 });
 
 export function ContactPage() {
+  const store = useStoreInfo();
+  const whatsappHref = getWhatsAppHref(store.whatsapp || store.phone, store.name);
+  const telHref = getTelHref(store.phone);
+  const emailHref = getMailtoHref(store.email, store.name);
+
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -51,7 +58,7 @@ export function ContactPage() {
       return;
     }
     setSubmitted(true);
-    toast.success("Thank you for contacting Makerman. Our concierge will respond within 4 hours.");
+    toast.success(`Thank you for contacting ${store.name}. Our concierge will respond within 4 hours.`);
   };
 
   return (
@@ -63,10 +70,10 @@ export function ContactPage() {
             Client Concierge
           </p>
           <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl font-normal text-foreground mt-2">
-            Contact Makerman
+            Contact {store.name}
           </h1>
           <p className="mt-4 text-xs sm:text-sm text-muted-foreground leading-relaxed">
-            Our atelier team in Mumbai is available Monday through Saturday, 10:00 AM – 7:00 PM IST for sizing advice, order status, custom inquiries, or general support.
+            Our atelier team in {store.city || "Mumbai"} is available Monday through Saturday, 10:00 AM – 7:00 PM IST for sizing advice, order status, custom inquiries, or general support.
           </p>
         </div>
 
@@ -74,53 +81,60 @@ export function ContactPage() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-12">
           {/* WhatsApp CTA */}
           <a
-            href={`https://wa.me/${BRAND.whatsapp.replace(/\D/g, "")}?text=Hi%20Makerman%20team,%20I%20have%20an%20inquiry`}
+            href={whatsappHref}
             target="_blank"
             rel="noopener noreferrer"
-            className="p-5 border border-border rounded-sm bg-[#FAF8F5] hover:border-foreground/50 transition-all flex items-center gap-4 group"
+            aria-label={`Chat with ${store.name} on WhatsApp`}
+            className="p-5 border border-border rounded-sm bg-[#FAF8F5] hover:border-foreground/50 transition-all flex items-center gap-4 group cursor-pointer"
           >
-            <div className="h-11 w-11 rounded-full bg-emerald-100 text-emerald-800 grid place-items-center shrink-0">
+            <div className="h-11 w-11 rounded-full bg-emerald-100 text-emerald-800 grid place-items-center shrink-0 group-hover:scale-105 transition-transform">
               <MessageCircle className="h-5 w-5" />
             </div>
             <div>
               <p className="text-xs font-semibold uppercase tracking-wider text-foreground group-hover:text-emerald-800 transition-colors">
                 WhatsApp Chat
               </p>
-              <p className="text-[11px] text-muted-foreground mt-0.5">{BRAND.whatsapp}</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                {formatPhoneDisplay(store.whatsapp || store.phone)}
+              </p>
               <span className="text-[10px] text-emerald-700 font-medium">Instant replies · 10am–7pm</span>
             </div>
           </a>
 
           {/* Phone Call CTA */}
           <a
-            href={`tel:${BRAND.phone.replace(/\s+/g, "")}`}
-            className="p-5 border border-border rounded-sm bg-[#FAF8F5] hover:border-foreground/50 transition-all flex items-center gap-4 group"
+            href={telHref}
+            aria-label={`Call ${store.name} client support`}
+            className="p-5 border border-border rounded-sm bg-[#FAF8F5] hover:border-foreground/50 transition-all flex items-center gap-4 group cursor-pointer"
           >
-            <div className="h-11 w-11 rounded-full bg-amber-100 text-amber-800 grid place-items-center shrink-0">
+            <div className="h-11 w-11 rounded-full bg-amber-100 text-amber-800 grid place-items-center shrink-0 group-hover:scale-105 transition-transform">
               <Phone className="h-5 w-5" />
             </div>
             <div>
               <p className="text-xs font-semibold uppercase tracking-wider text-foreground group-hover:text-amber-800 transition-colors">
                 Phone Support
               </p>
-              <p className="text-[11px] text-muted-foreground mt-0.5">{BRAND.phone}</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                {formatPhoneDisplay(store.phone)}
+              </p>
               <span className="text-[10px] text-muted-foreground">Mon–Sat 10:00 AM – 7:00 PM IST</span>
             </div>
           </a>
 
           {/* Email CTA */}
           <a
-            href={`mailto:${BRAND.email}`}
-            className="p-5 border border-border rounded-sm bg-[#FAF8F5] hover:border-foreground/50 transition-all flex items-center gap-4 group"
+            href={emailHref}
+            aria-label={`Email ${store.name} client concierge`}
+            className="p-5 border border-border rounded-sm bg-[#FAF8F5] hover:border-foreground/50 transition-all flex items-center gap-4 group cursor-pointer"
           >
-            <div className="h-11 w-11 rounded-full bg-neutral-200 text-neutral-800 grid place-items-center shrink-0">
+            <div className="h-11 w-11 rounded-full bg-neutral-200 text-neutral-800 grid place-items-center shrink-0 group-hover:scale-105 transition-transform">
               <Mail className="h-5 w-5" />
             </div>
             <div>
               <p className="text-xs font-semibold uppercase tracking-wider text-foreground group-hover:text-foreground transition-colors">
                 Email Atelier
               </p>
-              <p className="text-[11px] text-muted-foreground mt-0.5">{BRAND.email}</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">{store.email}</p>
               <span className="text-[10px] text-muted-foreground">Detailed responses under 4 hours</span>
             </div>
           </a>
@@ -253,9 +267,9 @@ export function ContactPage() {
           {/* Atelier Info Column */}
           <div className="lg:col-span-5 space-y-6">
             <div className="p-6 border border-border rounded-sm bg-[#FAF8F5] space-y-4">
-              <h3 className="font-display text-lg font-normal text-foreground">Makerman Atelier</h3>
+              <h3 className="font-display text-lg font-normal text-foreground">{store.name} Atelier</h3>
               <p className="text-xs text-muted-foreground leading-relaxed">
-                Unit 4, Kamala Mills Compound, Lower Parel, Mumbai, Maharashtra 400013, India
+                {store.fullAddress}
               </p>
 
               <div className="border-t border-border/80 pt-4 space-y-2 text-xs text-muted-foreground">
@@ -265,11 +279,15 @@ export function ContactPage() {
                 </div>
                 <div className="flex items-center gap-2">
                   <Phone className="h-4 w-4 text-amber-600" />
-                  <span>{BRAND.phone}</span>
+                  <a href={telHref} className="hover:text-foreground hover:underline transition-colors">
+                    {formatPhoneDisplay(store.phone)}
+                  </a>
                 </div>
                 <div className="flex items-center gap-2">
                   <Mail className="h-4 w-4 text-amber-600" />
-                  <span>{BRAND.email}</span>
+                  <a href={emailHref} className="hover:text-foreground hover:underline transition-colors">
+                    {store.email}
+                  </a>
                 </div>
               </div>
             </div>
@@ -277,7 +295,16 @@ export function ContactPage() {
             <div className="p-5 border border-border rounded-sm bg-background text-xs space-y-2 text-muted-foreground">
               <p className="font-semibold text-foreground uppercase tracking-wider">Complimentary Sizing & Fit Consults</p>
               <p className="leading-relaxed">
-                Not sure about shoulders or trouser lengths? Message our master tailor on WhatsApp with your height, chest, and waist measurements for personalized sizing suggestions.
+                Not sure about shoulders or trouser lengths?{" "}
+                <a
+                  href={whatsappHref}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-emerald-700 underline underline-offset-2 hover:text-emerald-800 font-medium"
+                >
+                  Message our master tailor on WhatsApp
+                </a>{" "}
+                with your height, chest, and waist measurements for personalized sizing suggestions.
               </p>
             </div>
           </div>

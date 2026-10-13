@@ -117,6 +117,12 @@ export interface ApiOrder {
   paymentMethod: string;
   items: ApiOrderItemDTO[];
   createdAt: string;
+  shipmentId?: string | null;
+  shipmentStatus?: string | null;
+  awbCode?: string | null;
+  courierName?: string | null;
+  trackingUrl?: string | null;
+  currentLocation?: string | null;
 }
 
 export interface ApiReview {
@@ -129,3 +135,54 @@ export interface ApiReview {
   status: "PENDING" | "APPROVED" | "REJECTED";
   createdAt: string;
 }
+
+export interface ApiCustomerAddress {
+  id: string;
+  customerId: string;
+  businessId: string;
+  recipientName: string;
+  phone: string;
+  addressLine1: string;
+  addressLine2: string | null;
+  city: string;
+  state: string;
+  country: string;
+  pincode: string;
+  addressType: string;
+  isDefault: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ApiCustomerAddressRequest {
+  recipientName: string;
+  phone: string;
+  addressLine1: string;
+  addressLine2?: string | null;
+  city: string;
+  state: string;
+  country?: string | null;
+  pincode: string;
+  addressType?: string | null;
+  isDefault?: boolean | null;
+}
+
+export interface ApiStoreProfile {
+  id: string;
+  name: string;
+  domain?: string | null;
+  storeType?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  logoUrl?: string | null;
+  address?: string | null;
+  city?: string | null;
+  state?: string | null;
+  country?: string | null;
+  pincode?: string | null;
+  gstin?: string | null;
+  description?: string | null;
+  baseCurrency?: string | null;
+  status?: string | null;
+}
+

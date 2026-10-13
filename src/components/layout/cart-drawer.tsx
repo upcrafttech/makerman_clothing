@@ -8,6 +8,7 @@ import { useShop } from "@/lib/shop-store";
 import { cn } from "@/lib/utils";
 import { productService } from "@/services";
 import { useProducts } from "@/hooks/use-api";
+import { getRegisteredProduct } from "@/lib/adapters";
 
 export function CartDrawer() {
   const { data: _catalog } = useProducts();
@@ -119,7 +120,7 @@ export function CartDrawer() {
           ) : (
             <div className="divide-y divide-border/60">
               {activeLines.map((line) => {
-                const product = productService.bySlug(line.productSlug);
+                const product = getRegisteredProduct(line.productSlug) ?? productService.bySlug(line.productSlug);
                 if (!product) return null;
                 return (
                   <div key={line.id} className="flex gap-4 py-4 first:pt-0 last:pb-0">
@@ -211,7 +212,7 @@ export function CartDrawer() {
               <h3 className="eyebrow text-subtle mb-3">Saved For Later ({savedLines.length})</h3>
               <div className="divide-y divide-border/40">
                 {savedLines.map((line) => {
-                  const product = productService.bySlug(line.productSlug);
+                  const product = getRegisteredProduct(line.productSlug) ?? productService.bySlug(line.productSlug);
                   if (!product) return null;
                   return (
                     <div key={line.id} className="flex items-center justify-between py-2.5 text-xs">

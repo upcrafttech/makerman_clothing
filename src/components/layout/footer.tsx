@@ -14,11 +14,14 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { BRAND } from "@/data/content";
+import { useStoreInfo } from "@/lib/shop-store";
+import { getWhatsAppHref, getMailtoHref, formatPhoneDisplay } from "@/lib/contact";
 import { cn } from "@/lib/utils";
 
 type PolicyType = "shipping" | "returns" | "privacy" | "terms" | null;
 
 export function Footer() {
+  const store = useStoreInfo();
   const [openGroup, setOpenGroup] = useState<string | null>(null);
   const [email, setEmail] = useState("");
   const [activePolicy, setActivePolicy] = useState<PolicyType>(null);
@@ -109,7 +112,19 @@ export function Footer() {
             <strong>Pricing & Taxes:</strong> All displayed prices are inclusive of GST (Goods and Services Tax) in Indian Rupees (₹).
           </p>
           <p>
-            <strong>Customer Concierge:</strong> Reach our Mumbai studio concierge via email at {BRAND.email} or WhatsApp at {BRAND.phone}.
+            <strong>Customer Concierge:</strong> Reach our concierge via email at{" "}
+            <a href={getMailtoHref(store.email, store.name)} className="underline hover:text-foreground">
+              {store.email}
+            </a>{" "}
+            or WhatsApp at{" "}
+            <a
+              href={getWhatsAppHref(store.phone, store.name)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline hover:text-foreground"
+            >
+              {formatPhoneDisplay(store.phone)}
+            </a>.
           </p>
         </div>
       ),
@@ -156,14 +171,14 @@ export function Footer() {
                 <MakermanLogo size="md" />
               </div>
               <p className="text-xs leading-relaxed text-muted-foreground max-w-sm mx-auto lg:mx-0">
-                Premium Indian clothing brand crafted with refined silhouettes, durable fabrics, and meticulous attention to detail.
+                {store.description || "Premium Indian clothing brand crafted with refined silhouettes, durable fabrics, and meticulous attention to detail."}
               </p>
               <div className="pt-2">
                 <p className="text-[0.6875rem] font-semibold uppercase tracking-widest text-foreground">
                   Feeling Happiness
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Atelier: Mumbai, Maharashtra, India
+                  Atelier: {store.fullAddress}
                 </p>
               </div>
             </div>
@@ -228,7 +243,7 @@ export function Footer() {
                 </li>
                 <li>
                   <a
-                    href={`https://wa.me/${BRAND.whatsapp.replace(/\D/g, "")}`}
+                    href={getWhatsAppHref(store.whatsapp || store.phone, store.name)}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="hover:text-foreground transition-colors text-left"
@@ -331,7 +346,7 @@ export function Footer() {
                     <p><Link to="/contact">Contact Concierge & FAQ</Link></p>
                     <p><button type="button" onClick={() => setActivePolicy("shipping")}>Shipping Policy</button></p>
                     <p><button type="button" onClick={() => setActivePolicy("returns")}>Returns & Exchanges</button></p>
-                    <p><a href={`https://wa.me/${BRAND.whatsapp.replace(/\D/g, "")}`} target="_blank" rel="noopener noreferrer">WhatsApp Support</a></p>
+                    <p><a href={getWhatsAppHref(store.whatsapp || store.phone, store.name)} target="_blank" rel="noopener noreferrer">WhatsApp Support</a></p>
                   </div>
                 )}
               </div>
@@ -384,7 +399,21 @@ export function Footer() {
 
           {/* Bottom Bar: Copyright & Legal Modals */}
           <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-border pt-8 text-xs text-muted-foreground sm:flex-row">
-            <p>© {new Date().getFullYear()} MAKERMAN CLOTHING. All rights reserved.</p>
+            <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-3 text-center sm:text-left">
+              <p>© {new Date().getFullYear()} {store.name.toUpperCase()}. All rights reserved.{store.gstin ? ` · GSTIN: ${store.gstin}` : ""}</p>
+              <span className="hidden sm:inline text-muted-foreground/60">·</span>
+              <p>
+                Developed and Maintain by the{" "}
+                <a
+                  href="https://upcraft.tech"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-medium text-foreground hover:underline underline-offset-2 transition-colors"
+                >
+                  Upcraft.tech
+                </a>
+              </p>
+            </div>
             
             <div className="flex flex-wrap items-center justify-center gap-4 text-[0.75rem]">
               <button

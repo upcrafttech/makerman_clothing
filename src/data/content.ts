@@ -359,29 +359,20 @@ export const popularSearches = [
   "White tee",
 ];
 
-export const defaultAddresses: Address[] = [
-  {
-    id: "addr-1",
-    fullName: "Aarav Deshpande",
-    phone: "+91 98204 41120",
-    line1: "12 Sagar Villa, Carter Road",
-    line2: "Bandra West",
-    city: "Mumbai",
-    state: "Maharashtra",
-    pincode: "400050",
-    isDefault: true,
-  },
-  {
-    id: "addr-2",
-    fullName: "Aarav Deshpande",
-    phone: "+91 98111 23344",
-    line1: "402, Prestige Meridian, Lavelle Road",
-    city: "Bengaluru",
-    state: "Karnataka",
-    pincode: "560001",
-    isDefault: false,
-  },
-];
+const seedOrderAddress: Address = {
+  id: "addr-sample",
+  fullName: "Valued Client",
+  phone: "9820441120",
+  line1: "12 Sagar Villa, Carter Road",
+  line2: "Bandra West",
+  city: "Mumbai",
+  state: "Maharashtra",
+  pincode: "400050",
+  isDefault: true,
+};
+
+export const defaultAddresses: Address[] = [];
+
 
 export const INDIAN_STATES = [
   "Andhra Pradesh",
@@ -415,7 +406,7 @@ export const seedOrders: Order[] = [
     status: "Shipped",
     deliveryDate: "2026-08-16",
     paymentMethod: "UPI · Google Pay",
-    address: defaultAddresses[0]!,
+    address: seedOrderAddress,
     items: [
       {
         productSlug: "warden-twill-overshirt",
@@ -445,7 +436,7 @@ export const seedOrders: Order[] = [
     status: "Delivered",
     deliveryDate: "2026-06-14",
     paymentMethod: "Credit Card · HDFC ····4412",
-    address: defaultAddresses[1]!,
+    address: seedOrderAddress,
     items: [
       {
         productSlug: "ridge-merino-crew",
@@ -467,7 +458,7 @@ export const seedOrders: Order[] = [
     status: "Delivered",
     deliveryDate: "2026-05-07",
     paymentMethod: "Cash on Delivery",
-    address: defaultAddresses[0]!,
+    address: seedOrderAddress,
     items: [
       {
         productSlug: "north-straight-jean",

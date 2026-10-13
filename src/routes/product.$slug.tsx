@@ -6,6 +6,7 @@ import {
   Clock,
   Feather,
   Heart,
+  Maximize2,
   Minus,
   Package,
   Plus,
@@ -22,6 +23,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { ProductCard } from "@/components/product/product-card";
+import { ProductImageLightbox } from "@/components/product/product-image-lightbox";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -33,16 +35,17 @@ import {
 import { sizeGuide } from "@/data/content";
 import { formatINR } from "@/lib/format";
 import { useShop } from "@/lib/shop-store";
+import { getWhatsAppHref, formatPhoneDisplay } from "@/lib/contact";
 import { cn } from "@/lib/utils";
 import { productService, reviewService } from "@/services";
-import { adaptProduct, registerProducts } from "@/lib/adapters";
+import { adaptProduct, registerProducts, getRegisteredProduct } from "@/lib/adapters";
 import { apiFetch } from "@/lib/api-client";
 import { useProductReviews } from "@/hooks/use-api";
 import type { ApiPagedProducts } from "@/types/api";
 
 export const Route = createFileRoute("/product/$slug")({
   loader: async ({ params }) => {
-    let product = productService.bySlug(params.slug);
+    let product = getRegisteredProduct(params.slug) ?? productService.bySlug(params.slug);
     if (!product) {
       try {
         const json = await apiFetch<ApiPagedProducts>("/products?page=0&size=100&status=ACTIVE");
@@ -82,7 +85,7 @@ export const Route = createFileRoute("/product/$slug")({
 
 export function ProductDetailPage() {
   const { product } = Route.useLoaderData();
-  const { addToCart, toggleWishlist, isWishlisted, markViewed } = useShop();
+  const { addToCart, toggleWishlist, isWishlisted, markViewed, storeInfo } = useShop();
   const navigate = useNavigate();
 
   const [selectedColor, setSelectedColor] = useState(product.colors[0]?.name ?? "");
@@ -91,6 +94,8 @@ export function ProductDetailPage() {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [openAccordion, setOpenAccordion] = useState<string | null>("materials");
   const [showSizeGuide, setShowSizeGuide] = useState(false);
+  const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
 
   useEffect(() => {
     markViewed(product.slug);
@@ -168,31 +173,73 @@ export function ProductDetailPage() {
           {/* Left Column: Image Gallery (Mobile swipe / Large cards) */}
           <div className="lg:col-span-7 space-y-4">
             {/* Main Stage Image */}
-            <div className="relative aspect-[3/4] sm:aspect-[4/5] w-full overflow-hidden bg-secondary rounded-sm">
+            <div
+              onClick={() => {
+                setLightboxIndex(activeImageIndex);
+                setIsLightboxOpen(true);
+              }}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  setLightboxIndex(activeImageIndex);
+                  setIsLightboxOpen(true);
+                }
+              }}
+              aria-label={`Open full screen view of ${product.name}`}
+              className="group relative aspect-[3/4] sm:aspect-[4/5] w-full overflow-hidden bg-secondary rounded-sm cursor-zoom-in select-none"
+            >
               <img
                 src={product.images[activeImageIndex] ?? product.images[0]}
                 alt={`${product.name} - View ${activeImageIndex + 1}`}
-                className="h-full w-full object-cover transition-opacity duration-300"
+                className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
                 loading="eager"
               />
 
+              {/* Hover Overlay Prompt */}
+              <div className="absolute inset-0 bg-black/15 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
+                <span className="bg-background/95 backdrop-blur-xs text-foreground text-xs font-semibold px-4 py-2 rounded-full shadow-lg flex items-center gap-2 transform translate-y-2 group-hover:translate-y-0 transition-transform">
+                  <Maximize2 className="h-3.5 w-3.5 text-amber-600" />
+                  Click for Fullscreen View
+                </span>
+              </div>
+
               {product.badge && (
-                <span className="absolute top-4 left-4 bg-ink text-ink-foreground px-3 py-1 text-[0.6875rem] uppercase tracking-widest font-semibold rounded-xs shadow-xs">
+                <span className="absolute top-4 left-4 bg-ink text-ink-foreground px-3 py-1 text-[0.6875rem] uppercase tracking-widest font-semibold rounded-xs shadow-xs z-10 pointer-events-none">
                   {product.badge}
                 </span>
               )}
 
-              <button
-                type="button"
-                onClick={handleShare}
-                aria-label="Share garment"
-                className="absolute top-4 right-4 grid h-11 w-11 place-items-center bg-background/80 backdrop-blur-xs text-foreground/80 hover:text-foreground rounded-full transition-colors"
-              >
-                <Share2 className="h-4 w-4" />
-              </button>
+              <div className="absolute top-4 right-4 flex items-center gap-2 z-10">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setLightboxIndex(activeImageIndex);
+                    setIsLightboxOpen(true);
+                  }}
+                  aria-label="View full screen"
+                  title="View full screen"
+                  className="grid h-10 w-10 place-items-center bg-background/85 backdrop-blur-xs text-foreground/80 hover:text-foreground rounded-full transition-colors shadow-xs cursor-pointer"
+                >
+                  <Maximize2 className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleShare();
+                  }}
+                  aria-label="Share garment"
+                  className="grid h-10 w-10 place-items-center bg-background/85 backdrop-blur-xs text-foreground/80 hover:text-foreground rounded-full transition-colors shadow-xs cursor-pointer"
+                >
+                  <Share2 className="h-4 w-4" />
+                </button>
+              </div>
 
               {/* Image Counter */}
-              <div className="absolute bottom-4 right-4 bg-background/85 backdrop-blur-xs px-3 py-1 text-[0.6875rem] font-medium text-foreground rounded-xs">
+              <div className="absolute bottom-4 right-4 bg-background/85 backdrop-blur-xs px-3 py-1 text-[0.6875rem] font-medium text-foreground rounded-xs pointer-events-none z-10">
                 {activeImageIndex + 1} / {product.images.length}
               </div>
             </div>
@@ -204,16 +251,33 @@ export function ProductDetailPage() {
                   <button
                     key={idx}
                     type="button"
-                    onClick={() => setActiveImageIndex(idx)}
+                    onClick={() => {
+                      if (activeImageIndex === idx) {
+                        setLightboxIndex(idx);
+                        setIsLightboxOpen(true);
+                      } else {
+                        setActiveImageIndex(idx);
+                      }
+                    }}
+                    onDoubleClick={() => {
+                      setLightboxIndex(idx);
+                      setIsLightboxOpen(true);
+                    }}
                     aria-label={`View image ${idx + 1}`}
+                    title={activeImageIndex === idx ? "Click again to open full screen" : `View image ${idx + 1}`}
                     className={cn(
-                      "relative h-20 w-16 sm:h-24 sm:w-20 shrink-0 overflow-hidden bg-secondary border rounded-xs transition-all",
+                      "group relative h-20 w-16 sm:h-24 sm:w-20 shrink-0 overflow-hidden bg-secondary border rounded-xs transition-all cursor-pointer",
                       activeImageIndex === idx
                         ? "border-foreground ring-2 ring-foreground"
                         : "border-border opacity-70 hover:opacity-100",
                     )}
                   >
                     <img src={img} alt="" className="h-full w-full object-cover" />
+                    {activeImageIndex === idx && (
+                      <span className="absolute bottom-1 right-1 grid h-5 w-5 place-items-center bg-background/90 rounded-full shadow-xs text-foreground pointer-events-none">
+                        <Maximize2 className="h-3 w-3" />
+                      </span>
+                    )}
                   </button>
                 ))}
               </div>
@@ -695,11 +759,30 @@ export function ProductDetailPage() {
             </div>
 
             <div className="p-3 bg-[#FAF8F5] border border-border rounded-sm text-xs text-muted-foreground">
-              <p><strong>Concierge Fitting Advice:</strong> If you are between sizes, we recommend sizing down for tailoring or sizing up for a relaxed streetwear silhouette. Need advice? WhatsApp us at +91 98204 41120.</p>
+              <p>
+                <strong>Concierge Fitting Advice:</strong> If you are between sizes, we recommend sizing down for tailoring or sizing up for a relaxed streetwear silhouette. Need advice?{" "}
+                <a
+                  href={getWhatsAppHref(storeInfo.phone, storeInfo.name)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline text-emerald-800 hover:text-emerald-900 font-medium"
+                >
+                  WhatsApp us at {formatPhoneDisplay(storeInfo.phone)}
+                </a>.
+              </p>
             </div>
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Fullscreen Product Image Lightbox */}
+      <ProductImageLightbox
+        isOpen={isLightboxOpen}
+        onClose={() => setIsLightboxOpen(false)}
+        images={product.images}
+        initialIndex={lightboxIndex}
+        productName={product.name}
+      />
     </div>
   );
 }

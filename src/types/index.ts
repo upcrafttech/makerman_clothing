@@ -103,6 +103,11 @@ export type Order = {
   shipping: number;
   tax: number;
   total: number;
+  shipmentStatus?: string | null;
+  awbCode?: string | null;
+  courierName?: string | null;
+  trackingUrl?: string | null;
+  currentLocation?: string | null;
 };
 
 export type SortKey = "featured" | "newest" | "price-asc" | "price-desc" | "rating";

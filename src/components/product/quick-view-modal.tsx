@@ -1,9 +1,10 @@
 import { Link } from "@tanstack/react-router";
-import { Check, Heart, Minus, Plus, Star, X } from "lucide-react";
+import { Check, Heart, Maximize2, Minus, Plus, Star, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { ProductImageLightbox } from "@/components/product/product-image-lightbox";
 import { formatINR } from "@/lib/format";
 import { useShop } from "@/lib/shop-store";
 import { cn } from "@/lib/utils";
@@ -20,6 +21,7 @@ export function QuickViewModal() {
   const [selectedSize, setSelectedSize] = useState<string>("");
   const [quantity, setQuantity] = useState(1);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const [isLightboxOpen, setIsLightboxOpen] = useState(false);
 
   useEffect(() => {
     if (product) {
@@ -80,17 +82,37 @@ export function QuickViewModal() {
         <div className="grid grid-cols-1 md:grid-cols-2">
           {/* Gallery / Image preview */}
           <div className="bg-secondary p-6 flex flex-col justify-between">
-            <div className="aspect-4/5 w-full overflow-hidden bg-background/50 relative">
+            <div
+              onClick={() => setIsLightboxOpen(true)}
+              className="group aspect-4/5 w-full overflow-hidden bg-background/50 relative cursor-zoom-in select-none"
+            >
               <img
                 src={product.images[activeImageIndex] ?? product.images[0]}
                 alt={product.name}
-                className="h-full w-full object-cover"
+                className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
               />
+              <div className="absolute inset-0 bg-black/15 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
+                <span className="bg-background/95 backdrop-blur-xs text-foreground text-[11px] font-semibold px-3 py-1.5 rounded-full shadow-md flex items-center gap-1.5">
+                  <Maximize2 className="h-3 w-3 text-amber-600" />
+                  View Fullscreen
+                </span>
+              </div>
               {product.badge && (
-                <span className="absolute left-3 top-3 bg-ink text-ink-foreground px-2 py-0.5 text-[10px] uppercase tracking-widest font-medium">
+                <span className="absolute left-3 top-3 bg-ink text-ink-foreground px-2 py-0.5 text-[10px] uppercase tracking-widest font-medium z-10 pointer-events-none">
                   {product.badge}
                 </span>
               )}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsLightboxOpen(true);
+                }}
+                aria-label="View full screen"
+                className="absolute right-3 bottom-3 h-8 w-8 grid place-items-center bg-background/80 hover:bg-background text-foreground rounded-full shadow-xs transition-colors z-10 cursor-pointer"
+              >
+                <Maximize2 className="h-3.5 w-3.5" />
+              </button>
             </div>
 
             {product.images.length > 1 && (
@@ -99,9 +121,15 @@ export function QuickViewModal() {
                   <button
                     key={idx}
                     type="button"
-                    onClick={() => setActiveImageIndex(idx)}
+                    onClick={() => {
+                      if (activeImageIndex === idx) {
+                        setIsLightboxOpen(true);
+                      } else {
+                        setActiveImageIndex(idx);
+                      }
+                    }}
                     className={cn(
-                      "h-16 w-12 shrink-0 border overflow-hidden transition-all",
+                      "h-16 w-12 shrink-0 border overflow-hidden transition-all cursor-pointer",
                       activeImageIndex === idx ? "border-ink ring-1 ring-ink" : "border-border opacity-70 hover:opacity-100",
                     )}
                   >
@@ -270,6 +298,14 @@ export function QuickViewModal() {
           </div>
         </div>
       </div>
+
+      <ProductImageLightbox
+        isOpen={isLightboxOpen}
+        onClose={() => setIsLightboxOpen(false)}
+        images={product.images}
+        initialIndex={activeImageIndex}
+        productName={product.name}
+      />
     </div>
   );
 }

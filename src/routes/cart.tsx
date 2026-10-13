@@ -9,6 +9,7 @@ import { useShop } from "@/lib/shop-store";
 import { cn } from "@/lib/utils";
 import { productService } from "@/services";
 import { useProducts } from "@/hooks/use-api";
+import { getRegisteredProduct } from "@/lib/adapters";
 
 export const Route = createFileRoute("/cart")({
   head: () => ({
@@ -136,7 +137,7 @@ export function CartPage() {
               {/* Items List */}
               <div className="divide-y divide-border border-y border-border">
                 {activeLines.map((line) => {
-                  const product = productService.bySlug(line.productSlug);
+                  const product = getRegisteredProduct(line.productSlug) ?? productService.bySlug(line.productSlug);
                   if (!product) return null;
 
                   return (
@@ -229,7 +230,7 @@ export function CartPage() {
                   <h3 className="font-display text-lg font-normal mb-4">Saved For Later ({savedLines.length})</h3>
                   <div className="divide-y divide-border/60">
                     {savedLines.map((line) => {
-                      const product = productService.bySlug(line.productSlug);
+                      const product = getRegisteredProduct(line.productSlug) ?? productService.bySlug(line.productSlug);
                       if (!product) return null;
                       return (
                         <div key={line.id} className="py-3 flex items-center justify-between gap-4">

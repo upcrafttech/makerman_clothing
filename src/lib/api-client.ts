@@ -1,9 +1,14 @@
 const isBrowser = typeof window !== "undefined";
-const BASE_URL = isBrowser
-  ? "/api"
-  : (import.meta.env.VITE_API_BASE_URL as string) || "http://localhost:8080/api";
-const BUSINESS_ID =
-  (import.meta.env.VITE_BUSINESS_ID as string) || "7febea53-02ed-4996-ae3a-1fc69d74292e";
+const envApiUrl = (import.meta.env as Record<string, string>)["VITE_API_BASE_URL"];
+const BASE_URL =
+  envApiUrl && envApiUrl.trim() !== ""
+    ? envApiUrl.trim()
+    : isBrowser
+      ? "/api"
+      : "https://dashboard.upcraft.tech/api";
+export const BUSINESS_ID =
+  ((import.meta.env as Record<string, string>)["VITE_BUSINESS_ID"] as string) ||
+  "1a6176f2-7f3b-41f3-92ab-514885680a2a";
 
 export async function apiFetch<T>(
   path: string,
