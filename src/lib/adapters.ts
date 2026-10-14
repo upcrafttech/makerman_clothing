@@ -48,15 +48,63 @@ export function adaptProduct(api: ApiProduct): Product {
     new Set(rawVariants.map((v) => v.sizeLabel).filter(Boolean)),
   );
 
+  const meta = (key: string) =>
+    api.metafields?.find((m) => m.key.toLowerCase() === key.toLowerCase())?.value;
+
   const colorMap: Record<string, ColorOption> = {};
+
+  // 1. Extract from variants
   for (const v of rawVariants) {
-    if (v.colorName && !colorMap[v.colorName]) {
-      colorMap[v.colorName] = {
-        name: v.colorName,
-        hex: v.colorCode || "#1a1a1a",
+    const rawName = v.colorName?.trim();
+    const rawCode = v.colorCode?.trim();
+    if (rawName && !colorMap[rawName.toLowerCase()]) {
+      colorMap[rawName.toLowerCase()] = {
+        name: rawName,
+        hex: rawCode || "#1a1a1a",
+      };
+    } else if (rawCode && !colorMap[rawCode.toLowerCase()]) {
+      colorMap[rawCode.toLowerCase()] = {
+        name: rawCode,
+        hex: rawCode,
       };
     }
   }
+
+  // 2. Extract from metafields (colors, color, Color)
+  const colorsMeta = meta("colors") || meta("color");
+  if (colorsMeta) {
+    try {
+      const parsed = JSON.parse(colorsMeta);
+      if (Array.isArray(parsed)) {
+        for (const item of parsed) {
+          if (typeof item === "string" && item.trim()) {
+            const val = item.trim();
+            const hex = val.startsWith("#") ? val : "#1a1a1a";
+            if (!colorMap[val.toLowerCase()]) {
+              colorMap[val.toLowerCase()] = { name: val, hex };
+            }
+          } else if (item && typeof item === "object") {
+            const name = (item.name || item.colorName || item.label || item.hex || "Color").trim();
+            const hex = (item.hex || item.colorCode || item.code || "#1a1a1a").trim();
+            if (name && !colorMap[name.toLowerCase()]) {
+              colorMap[name.toLowerCase()] = { name, hex };
+            }
+          }
+        }
+      }
+    } catch {
+      const parts = colorsMeta.split(",").map((s) => s.trim()).filter(Boolean);
+      for (const p of parts) {
+        if (!colorMap[p.toLowerCase()]) {
+          colorMap[p.toLowerCase()] = {
+            name: p,
+            hex: p.startsWith("#") ? p : "#1a1a1a",
+          };
+        }
+      }
+    }
+  }
+
   const colors = Object.values(colorMap);
 
   const images = [
@@ -77,9 +125,6 @@ export function adaptProduct(api: ApiProduct): Product {
       images.push("/images/p-shirt-1.jpg", "/images/hero.jpg");
     }
   }
-
-  const meta = (key: string) =>
-    api.metafields?.find((m) => m.key.toLowerCase() === key.toLowerCase())?.value;
 
   // Generate clean URL slug from product name or fallback to id
   const slug =
