@@ -73,7 +73,7 @@ const initial: PersistShape = {
   recentlyViewed: [],
   compare: [],
   addresses: [],
-  orders: seedOrders,
+  orders: [],
   session: null,
 };
 
@@ -290,6 +290,11 @@ export function ShopProvider({ children }: { children: ReactNode }) {
       if (Array.isArray(parsed.addresses)) {
         parsed.addresses = parsed.addresses.filter(
           (a) => a.id !== "addr-1" && a.id !== "addr-2" && a.fullName !== "Aarav Deshpande",
+        );
+      }
+      if (Array.isArray(parsed.orders)) {
+        parsed.orders = parsed.orders.filter(
+          (o) => o && o.id && !o.id.startsWith("AVL2026"),
         );
       }
       const authUser = authStore.get();

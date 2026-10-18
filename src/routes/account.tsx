@@ -100,16 +100,23 @@ export function AccountPage() {
     pincode: "",
   });
 
+  const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!authEmail.includes("@")) {
+    const trimmedEmail = authEmail.trim().toLowerCase();
+    if (!trimmedEmail || !EMAIL_REGEX.test(trimmedEmail)) {
       toast.error("Please enter a valid email address");
+      return;
+    }
+    if (!authPassword) {
+      toast.error("Please enter your password");
       return;
     }
     setIsSubmitting(true);
     try {
       const res = await loginMutation.mutateAsync({
-        email: authEmail.trim(),
+        email: trimmedEmail,
         password: authPassword,
       });
       authStore.set(res);
@@ -125,22 +132,24 @@ export function AccountPage() {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!authEmail.includes("@")) {
-      toast.error("Please enter a valid email address");
-      return;
-    }
     if (!authName.trim()) {
       toast.error("Please enter your name");
       return;
     }
-    if (authPassword.length < 6) {
-      toast.error("Password must be at least 6 characters");
+    const trimmedEmail = authEmail.trim().toLowerCase();
+    if (!trimmedEmail || !EMAIL_REGEX.test(trimmedEmail)) {
+      toast.error("Please enter a valid email address (e.g. name@domain.com)");
       return;
     }
 
-    const cleanedPhone = authPhone.replace(/\D/g, "");
-    if (!cleanedPhone || cleanedPhone.length < 10) {
+    const cleanedPhone = authPhone.replace(/\D/g, "").slice(-10);
+    if (!cleanedPhone || cleanedPhone.length !== 10) {
       toast.error("Please enter a valid 10-digit mobile number");
+      return;
+    }
+
+    if (authPassword.length < 6) {
+      toast.error("Password must be at least 6 characters");
       return;
     }
 
@@ -148,13 +157,13 @@ export function AccountPage() {
     try {
       await registerMutation.mutateAsync({
         name: authName.trim(),
-        email: authEmail.trim(),
+        email: trimmedEmail,
         password: authPassword,
         phone: cleanedPhone,
       });
       setAuthMode("otp");
       toast.success("Verification code sent", {
-        description: `Check your inbox at ${authEmail}`,
+        description: `Check your inbox at ${trimmedEmail}`,
       });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Registration failed";
@@ -353,7 +362,7 @@ export function AccountPage() {
 
             {/* Form: LOGIN */}
             {authMode === "login" && (
-              <form onSubmit={handleLogin} className="space-y-4">
+              <form onSubmit={handleLogin} noValidate className="space-y-4">
                 <div>
                   <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground block mb-1">
                     Email Address
@@ -405,7 +414,7 @@ export function AccountPage() {
 
             {/* Form: REGISTER */}
             {authMode === "register" && (
-              <form onSubmit={handleRegister} className="space-y-4">
+              <form onSubmit={handleRegister} noValidate className="space-y-4">
                 <div>
                   <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground block mb-1">
                     Full Name *
@@ -485,7 +494,7 @@ export function AccountPage() {
 
             {/* Form: VERIFY OTP */}
             {authMode === "otp" && (
-              <form onSubmit={handleVerifyOtp} className="space-y-4">
+              <form onSubmit={handleVerifyOtp} noValidate className="space-y-4">
                 <div>
                   <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground block mb-1">
                     Verification Code (OTP)
@@ -536,47 +545,46 @@ export function AccountPage() {
 
   const liveUser = authStore.get();
   const liveOrders = apiOrdersData?.content;
-  const effectiveOrders =
-    liveOrders && liveOrders.length > 0
-      ? liveOrders.map((o) => ({
-          id: o.id,
-          date: new Date(o.createdAt || Date.now()).toLocaleDateString("en-IN", {
-            month: "short",
-            day: "numeric",
-            year: "numeric",
-          }),
-          status: (o.status || "Order Placed") as Order["status"],
-          deliveryDate: "Estimated 3-5 business days",
-          paymentMethod: o.paymentMethod || "Prepaid",
-          address: addresses[0] || {
-            id: "1",
-            fullName: o.customerName || "Customer",
-            phone: o.customerPhone || "+91 98204 41120",
-            line1: o.shippingAddress || "Main Street",
-            city: "Mumbai",
-            state: "Maharashtra",
-            pincode: "400013",
-            isDefault: true,
-          },
-          items: (o.items || []).map((it) => ({
-            productSlug: it.productId,
-            name: it.productName || "Makerman Garment",
-            size: "Regular",
-            color: "Standard",
-            quantity: it.quantity,
-            price: it.price,
-          })),
-          subtotal: o.totalAmount,
-          shipping: 0,
-          tax: 0,
-          total: o.totalAmount,
-          shipmentStatus: o.shipmentStatus,
-          awbCode: o.awbCode,
-          courierName: o.courierName,
-          trackingUrl: o.trackingUrl,
-          currentLocation: o.currentLocation,
-        }))
-      : orders;
+  const effectiveOrders: Order[] = (session && authStore.getToken()) || liveOrders
+    ? (liveOrders ?? []).map((o) => ({
+        id: o.id,
+        date: new Date(o.createdAt || Date.now()).toLocaleDateString("en-IN", {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+        }),
+        status: (o.status || "Order Placed") as Order["status"],
+        deliveryDate: "Estimated 3-5 business days",
+        paymentMethod: o.paymentMethod || "Prepaid",
+        address: addresses[0] || {
+          id: "1",
+          fullName: o.customerName || "Customer",
+          phone: o.customerPhone || "+91 98204 41120",
+          line1: o.shippingAddress || "Main Street",
+          city: "Mumbai",
+          state: "Maharashtra",
+          pincode: "400013",
+          isDefault: true,
+        },
+        items: (o.items || []).map((it) => ({
+          productSlug: it.productId,
+          name: it.productName || "Makerman Garment",
+          size: "Regular",
+          color: "Standard",
+          quantity: it.quantity,
+          price: it.price,
+        })),
+        subtotal: o.totalAmount,
+        shipping: 0,
+        tax: 0,
+        total: o.totalAmount,
+        shipmentStatus: o.shipmentStatus,
+        awbCode: o.awbCode,
+        courierName: o.courierName,
+        trackingUrl: o.trackingUrl,
+        currentLocation: o.currentLocation,
+      }))
+    : orders.filter((o) => !o.id.startsWith("AVL2026"));
 
   const favoriteProducts = wishlist
     .map((slug) => getRegisteredProduct(slug) ?? productService.bySlug(slug))

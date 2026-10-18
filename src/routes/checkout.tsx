@@ -101,7 +101,6 @@ export function CheckoutPage() {
 
   const handlePlaceOrder = async () => {
     setIsPlacing(true);
-    let orderId = `MK-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
 
     const items = activeLines
       .map((line) => {
@@ -117,6 +116,12 @@ export function CheckoutPage() {
         };
       })
       .filter(Boolean) as Order["items"];
+
+    if (items.length === 0) {
+      toast.error("Your cart is empty");
+      setIsPlacing(false);
+      return;
+    }
 
     const completeOrderSuccess = (finalOrderId: string, finalPaymentMethod: string) => {
       const newOrder: Order = {
@@ -138,119 +143,139 @@ export function CheckoutPage() {
       setStep(4);
       clearCart();
       setIsPlacing(false);
-      toast.success(`Order ${finalOrderId} confirmed!`);
+      toast.success(`Order confirmed successfully!`);
     };
 
-    // If online payment (UPI, Card, Net Banking), initiate Razorpay
-    if (paymentMethod !== "cod") {
-      try {
-        const rzpOrder = await createRazorpayOrderMutation.mutateAsync({
-          amount: finalTotal,
-          receipt: orderId,
-        });
-
-        if (rzpOrder?.razorpayOrderId && rzpOrder?.keyId) {
-          await openRazorpayCheckout({
-            key: rzpOrder.keyId,
-            amount: rzpOrder.amount,
-            currency: rzpOrder.currency || "INR",
-            name: "Makerman Clothing",
-            description: `Order ${orderId}`,
-            order_id: rzpOrder.razorpayOrderId,
-            prefill: {
-              name: currentAddress.fullName,
-              contact: currentAddress.phone.replace(/\D/g, "").slice(-10),
-            },
-            theme: {
-              color: "#171717",
-            },
-            handler: async (response) => {
-              try {
-                await verifyRazorpayPaymentMutation.mutateAsync({
-                  razorpayOrderId: response.razorpay_order_id,
-                  razorpayPaymentId: response.razorpay_payment_id,
-                  razorpaySignature: response.razorpay_signature,
-                  platformOrderId: rzpOrder.internalOrderId,
-                });
-              } catch (verifyErr) {
-                console.warn("Payment verification notice:", verifyErr);
-              }
-              completeOrderSuccess(orderId, `Razorpay Online (${response.razorpay_payment_id.slice(-6)})`);
-            },
-            modal: {
-              ondismiss: () => {
-                setIsPlacing(false);
-                toast.info("Payment cancelled. You can retry or choose Cash on Delivery.");
-              },
-            },
-          });
-          return;
-        }
-      } catch (err: unknown) {
-        const msg = (err as Error)?.message || "";
-        console.warn("Razorpay order response:", msg);
-        if (msg.includes("not configured")) {
-          toast.warning("Razorpay gateway is in setup mode on backend.", {
-            description: "Placing order with offline confirmation status.",
-          });
-        } else {
-          toast.error("Online payment gateway unavailable. Proceeding with offline order.", {
-            description: msg,
-          });
-        }
-      }
-    }
-
-    // COD or offline order
-    const token = authStore.getToken();
-    if (token) {
-      try {
-        const apiItems = activeLines
-          .map((line) => {
-            const p = getRegisteredProduct(line.productSlug) ?? productService.bySlug(line.productSlug);
-            if (!p) return null;
-            const variant = p.variants?.find(
-              (v) =>
-                v.sizeLabel.toLowerCase() === line.size.toLowerCase() ||
-                v.colorName.toLowerCase() === line.color.toLowerCase(),
-            );
-            return {
-              productId: p.id,
-              variantUuid: variant?.id ?? null,
-              quantity: line.quantity,
-              price: p.price,
-            };
-          })
-          .filter(Boolean);
-
-        const payload = {
-          items: apiItems,
-          discountAmount: 0,
-          totalAmount: finalTotal,
-          customerName: currentAddress.fullName,
-          customerPhone:
-            currentAddress.phone.replace("+91", "").replace(/\D/g, "").slice(-10) || "9820441120",
-          address: currentAddress.line1,
-          landmark: currentAddress.line2 || "",
-          city: currentAddress.city,
-          state: currentAddress.state,
-          pincode: currentAddress.pincode.replace(/\D/g, "").slice(0, 6) || "400013",
-          paymentMethod: paymentMethod.toUpperCase(),
+    const apiItems = activeLines
+      .map((line) => {
+        const p = getRegisteredProduct(line.productSlug) ?? productService.bySlug(line.productSlug);
+        if (!p) return null;
+        const variant = p.variants?.find(
+          (v) =>
+            v.sizeLabel.toLowerCase() === line.size.toLowerCase() ||
+            v.colorName.toLowerCase() === line.color.toLowerCase(),
+        );
+        return {
+          productId: p.id,
+          variantUuid: variant?.id ?? null,
+          quantity: line.quantity,
+          price: p.price,
         };
+      })
+      .filter(Boolean);
 
-        const res = await createOrderMutation.mutateAsync(payload);
-        if (res?.id) {
-          orderId = res.id;
-        }
-      } catch (err) {
-        console.warn("Backend order creation warning (fallback to local order):", err);
-      }
+    const authUser = authStore.get();
+    const cleanPhone =
+      currentAddress.phone.replace("+91", "").replace(/\D/g, "").slice(-10) || "9820441120";
+    const cleanPincode =
+      currentAddress.pincode.replace(/\D/g, "").slice(0, 6) || "400013";
+
+    const payload = {
+      items: apiItems,
+      discountAmount: 0,
+      totalAmount: finalTotal,
+      customerName: currentAddress.fullName || "Guest Customer",
+      customerEmail: authUser?.email || undefined,
+      customerPhone: cleanPhone,
+      address: currentAddress.line1,
+      landmark: currentAddress.line2 || "",
+      city: currentAddress.city,
+      state: currentAddress.state,
+      country: "India",
+      pincode: cleanPincode,
+      paymentMethod: paymentMethod === "cod" ? "COD" : "ONLINE",
+    };
+
+    let backendOrder: { id: string } | null = null;
+    try {
+      backendOrder = await createOrderMutation.mutateAsync(payload);
+    } catch (err: any) {
+      console.error("Backend order creation failed:", err);
+      toast.error(err?.message || "Failed to create order on server");
+      setIsPlacing(false);
+      return;
     }
 
-    completeOrderSuccess(
-      orderId,
-      paymentMethod === "cod" ? "Cash on Delivery" : `Online (${paymentMethod.toUpperCase()})`,
-    );
+    const platformOrderId = backendOrder?.id;
+    if (!platformOrderId) {
+      toast.error("Server did not return a valid order ID");
+      setIsPlacing(false);
+      return;
+    }
+
+    // COD flow
+    if (paymentMethod === "cod") {
+      completeOrderSuccess(platformOrderId, "Cash on Delivery");
+      return;
+    }
+
+    // Online payment flow (UPI, Card, Net Banking via Razorpay)
+    try {
+      const rzpOrder = await createRazorpayOrderMutation.mutateAsync({
+        platformOrderId,
+        amount: finalTotal,
+        receipt: platformOrderId,
+      });
+
+      if (!rzpOrder?.razorpayOrderId || !rzpOrder?.keyId) {
+        throw new Error("Razorpay gateway response missing order ID or key");
+      }
+
+      await openRazorpayCheckout({
+        key: rzpOrder.keyId,
+        amount: rzpOrder.amount,
+        currency: rzpOrder.currency || "INR",
+        name: "Makerman Clothing",
+        description: `Order ${platformOrderId.slice(0, 8)}`,
+        order_id: rzpOrder.razorpayOrderId,
+        prefill: {
+          name: currentAddress.fullName,
+          contact: cleanPhone,
+          ...(authUser?.email ? { email: authUser.email } : {}),
+        },
+        theme: {
+          color: "#171717",
+        },
+        handler: async (response) => {
+          try {
+            await verifyRazorpayPaymentMutation.mutateAsync({
+              razorpayOrderId: response.razorpay_order_id,
+              razorpayPaymentId: response.razorpay_payment_id,
+              razorpaySignature: response.razorpay_signature,
+              platformOrderId: platformOrderId,
+            });
+            completeOrderSuccess(
+              platformOrderId,
+              `Razorpay Online (${response.razorpay_payment_id.slice(-6)})`,
+            );
+          } catch (verifyErr: any) {
+            console.error("Payment verification failed:", verifyErr);
+            toast.error(
+              verifyErr?.message ||
+                "Payment verification failed. Please contact support if your account was debited.",
+            );
+            setIsPlacing(false);
+          }
+        },
+        modal: {
+          ondismiss: () => {
+            setIsPlacing(false);
+            toast.info("Payment cancelled. You can retry or choose Cash on Delivery.");
+          },
+        },
+      });
+    } catch (err: unknown) {
+      setIsPlacing(false);
+      const msg = (err as Error)?.message || "";
+      console.error("Razorpay order initiation error:", msg);
+      if (msg.includes("not configured") || msg.includes("disabled")) {
+        toast.error("Online payment gateway is not configured or disabled by store admin.", {
+          description: "Please choose Cash on Delivery to complete your purchase.",
+        });
+      } else {
+        toast.error("Online payment gateway error: " + msg);
+      }
+    }
   };
 
   // Step 4: Confirmation screen
