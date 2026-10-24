@@ -9,11 +9,15 @@ import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 export default defineConfig({
   vite: {
     server: {
+      port: 3000,
+      strictPort: false,
       proxy: {
         "/api": {
-          target: "https://dashboard.upcraft.tech",
+          target: process.env.VITE_API_BASE_URL
+            ? process.env.VITE_API_BASE_URL.replace(/\/api\/?$/, "")
+            : "http://localhost:8080",
           changeOrigin: true,
-          secure: true,
+          secure: false,
         },
       },
     },

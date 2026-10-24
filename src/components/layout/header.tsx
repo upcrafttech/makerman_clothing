@@ -3,6 +3,7 @@ import { Heart, Menu, Search, ShoppingBag, User, X, Phone, MessageSquare } from 
 import { useEffect, useState } from "react";
 
 import { MakermanLogo } from "@/components/layout/makerman-logo";
+import { AnnouncementBar } from "@/components/layout/announcement-bar";
 import { BRAND } from "@/data/content";
 import { useShop } from "@/lib/shop-store";
 import { cn } from "@/lib/utils";
@@ -56,10 +57,8 @@ export function Header() {
 
   return (
     <>
-      {/* Editorial Announcement Bar */}
-      <div className="bg-[#171717] text-[#FAF8F5] py-2 px-4 text-center text-[0.6875rem] font-medium tracking-[0.18em] uppercase border-b border-[#282828] select-none">
-        <span>Complimentary Pan-India Shipping on orders above ₹1,999 · Feeling Happiness</span>
-      </div>
+      {/* Dynamic Announcement Bar (Custom CMS Banners) */}
+      <AnnouncementBar />
 
       <header
         className={cn(
