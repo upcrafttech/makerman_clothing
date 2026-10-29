@@ -508,3 +508,19 @@ export function useStoreProfile() {
 
 
 
+
+/* ── Storefront Payment Config ─────────────────── */
+export interface StorefrontPaymentConfig {
+  onlinePaymentEnabled: boolean;
+  currency: string;
+}
+
+export function usePaymentConfig() {
+  return useQuery<StorefrontPaymentConfig>({
+    queryKey: ["storefront-payment-config"],
+    queryFn: () => apiFetch<StorefrontPaymentConfig>("/storefront/payment/config"),
+    staleTime: 1000 * 60 * 5, // 5 mins
+    gcTime: 1000 * 60 * 30,
+    retry: 1,
+  });
+}

@@ -26,6 +26,7 @@ import {
   useVerifyRazorpayPayment,
   useProducts,
   useCustomerAddresses,
+  usePaymentConfig,
 } from "@/hooks/use-api";
 import { authStore } from "@/lib/auth-store";
 import { getRegisteredProduct } from "@/lib/adapters";
@@ -56,6 +57,14 @@ export function CheckoutPage() {
   const [shippingMethod, setShippingMethod] = useState<"standard" | "express">("standard");
   const [paymentMethod, setPaymentMethod] = useState<"upi" | "card" | "netbanking" | "cod">("upi");
   const [confirmedOrder, setConfirmedOrder] = useState<Order | null>(null);
+  const { data: paymentConfig, isLoading: paymentConfigLoading } = usePaymentConfig();
+  const onlinePaymentEnabled = paymentConfig?.onlinePaymentEnabled ?? false;
+
+  useEffect(() => {
+    if (!paymentConfigLoading && !onlinePaymentEnabled && paymentMethod !== "cod") {
+      setPaymentMethod("cod");
+    }
+  }, [paymentConfigLoading, onlinePaymentEnabled, paymentMethod]);
 
   useEffect(() => {
     if (availableAddresses.length > 0 && selectedAddressId === "new") {
@@ -119,6 +128,13 @@ export function CheckoutPage() {
 
     if (items.length === 0) {
       toast.error("Your cart is empty");
+      setIsPlacing(false);
+      return;
+    }
+
+    if (!onlinePaymentEnabled && paymentMethod !== "cod") {
+      toast.error("Online payment is currently disabled. Please select Cash on Delivery.");
+      setPaymentMethod("cod");
       setIsPlacing(false);
       return;
     }
@@ -613,12 +629,30 @@ export function CheckoutPage() {
               {step === 3 && (
                 <div className="space-y-6">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {[
+                    {!paymentConfigLoading && !onlinePaymentEnabled && (
+                      <div className="sm:col-span-2 p-3 bg-amber-500/10 border border-amber-500/20 rounded-sm text-xs text-amber-900 dark:text-amber-200 flex items-start gap-2.5">
+                        <Package className="h-4 w-4 shrink-0 mt-0.5 text-amber-600" />
+                        <div>
+                          <p className="font-semibold text-foreground">Online Payment Currently Unavailable</p>
+                          <p className="text-muted-foreground text-[11px] mt-0.5">
+                            Online payment is currently disabled by the store. Cash on Delivery is the only available payment option.
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {paymentConfigLoading &&
+                      [1, 2, 3, 4].map((i) => (
+                        <div key={i} className="p-4 border border-border rounded-sm animate-pulse bg-secondary/40 h-20" />
+                      ))}
+
+                    {!paymentConfigLoading &&
+                      [
                       { id: "upi", title: "UPI / QR Code", desc: "Google Pay, PhonePe, Paytm, BHIM", icon: QrCode },
                       { id: "card", title: "Credit / Debit Card", desc: "Visa, Mastercard, RuPay, Amex", icon: CreditCard },
                       { id: "netbanking", title: "Net Banking", desc: "HDFC, ICICI, SBI, Axis, Kotak", icon: Wallet },
                       { id: "cod", title: "Cash on Delivery", desc: "Pay cash upon doorstep verification", icon: Package },
-                    ].map((method) => (
+                    ].filter((method) => method.id === "cod" || onlinePaymentEnabled).map((method) => (
                       <label
                         key={method.id}
                         onClick={() => setPaymentMethod(method.id as typeof paymentMethod)}
@@ -680,7 +714,7 @@ export function CheckoutPage() {
                   )}
 
                   <Button
-                    disabled={isPlacing}
+                    disabled={isPlacing || paymentConfigLoading}
                     onClick={handlePlaceOrder}
                     className="w-full h-13 text-xs font-semibold uppercase tracking-[0.14em] bg-ink text-ink-foreground hover:bg-ink/90 rounded-sm shadow-md"
                   >
