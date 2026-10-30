@@ -108,6 +108,7 @@ export type Order = {
   courierName?: string | null | undefined;
   trackingUrl?: string | null | undefined;
   currentLocation?: string | null | undefined;
+  expectedArrivalDate?: string | null | undefined;
 };
 
 export type SortKey = "featured" | "newest" | "price-asc" | "price-desc" | "rating";

@@ -223,6 +223,41 @@ export function useResetPassword() {
   });
 }
 
+export interface GooglePublicConfigResponse {
+  enabled: boolean;
+  clientId?: string | null;
+  allowSignup?: boolean;
+}
+
+export function useGoogleAuthConfig() {
+  return useQuery({
+    queryKey: ["googleAuthConfig", BUSINESS_ID],
+    queryFn: () => apiFetch<GooglePublicConfigResponse>("/auth/google/config"),
+    staleTime: 5 * 60 * 1000,
+    retry: 1,
+  });
+}
+
+export function useGoogleLogin() {
+  return useMutation({
+    mutationFn: ({ credential }: { credential: string }) =>
+      apiFetch<ApiAuthResponse>("/auth/google", {
+        method: "POST",
+        body: JSON.stringify({ credential }),
+      }),
+  });
+}
+
+export function useGoogleRegister() {
+  return useMutation({
+    mutationFn: (body: { credential: string; name: string; phone: string; password: string }) =>
+      apiFetch<ApiAuthResponse>("/auth/google/register", {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
+  });
+}
+
 /* ── Cart (authenticated) ──────────────────── */
 export function useApiCart() {
   const token = authStore.getToken();
@@ -418,15 +453,16 @@ export function useCustomerAddresses() {
 
 export function useCreateCustomerAddress() {
   const qc = useQueryClient();
-  const token = authStore.getToken();
 
   return useMutation({
-    mutationFn: (body: ApiCustomerAddressRequest) =>
-      apiFetch<{ success: boolean; data: ApiCustomerAddress }>("/customer/addresses", {
+    mutationFn: (body: ApiCustomerAddressRequest) => {
+      const token = authStore.getToken();
+      return apiFetch<{ success: boolean; data: ApiCustomerAddress }>("/customer/addresses", {
         method: "POST",
         token,
         body: JSON.stringify(body),
-      }),
+      });
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["customer-addresses"] });
     },
@@ -435,15 +471,16 @@ export function useCreateCustomerAddress() {
 
 export function useUpdateCustomerAddress() {
   const qc = useQueryClient();
-  const token = authStore.getToken();
 
   return useMutation({
-    mutationFn: ({ id, body }: { id: string; body: ApiCustomerAddressRequest }) =>
-      apiFetch<{ success: boolean; data: ApiCustomerAddress }>(`/customer/addresses/${id}`, {
+    mutationFn: ({ id, body }: { id: string; body: ApiCustomerAddressRequest }) => {
+      const token = authStore.getToken();
+      return apiFetch<{ success: boolean; data: ApiCustomerAddress }>(`/customer/addresses/${id}`, {
         method: "PUT",
         token,
         body: JSON.stringify(body),
-      }),
+      });
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["customer-addresses"] });
     },
@@ -452,14 +489,15 @@ export function useUpdateCustomerAddress() {
 
 export function useDeleteCustomerAddress() {
   const qc = useQueryClient();
-  const token = authStore.getToken();
 
   return useMutation({
-    mutationFn: (addressId: string) =>
-      apiFetch<{ success: boolean }>(`/customer/addresses/${addressId}`, {
+    mutationFn: (addressId: string) => {
+      const token = authStore.getToken();
+      return apiFetch<{ success: boolean }>(`/customer/addresses/${addressId}`, {
         method: "DELETE",
         token,
-      }),
+      });
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["customer-addresses"] });
     },
@@ -468,14 +506,15 @@ export function useDeleteCustomerAddress() {
 
 export function useSetDefaultCustomerAddress() {
   const qc = useQueryClient();
-  const token = authStore.getToken();
 
   return useMutation({
-    mutationFn: (addressId: string) =>
-      apiFetch<{ success: boolean; data: ApiCustomerAddress }>(`/customer/addresses/${addressId}/default`, {
+    mutationFn: (addressId: string) => {
+      const token = authStore.getToken();
+      return apiFetch<{ success: boolean; data: ApiCustomerAddress }>(`/customer/addresses/${addressId}/default`, {
         method: "PATCH",
         token,
-      }),
+      });
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["customer-addresses"] });
     },
@@ -522,5 +561,129 @@ export function usePaymentConfig() {
     staleTime: 1000 * 60 * 5, // 5 mins
     gcTime: 1000 * 60 * 30,
     retry: 1,
+  });
+}
+
+/* ── Location & Pincode Lookup ─────────────────── */
+export interface CountryItem {
+  countryCode: string;
+  countryName: string;
+}
+
+export interface StateItem {
+  stateName: string;
+  stateCode: string;
+  countryCode: string;
+  gstCode?: string;
+}
+
+export interface CityItem {
+  id?: number;
+  cityName: string;
+  stateName: string;
+  stateCode?: string;
+  countryCode?: string;
+  pincodePrefix?: string;
+}
+
+export interface PincodeVerification {
+  valid: boolean;
+  pincode: string;
+  state: string | null;
+  district: string | null;
+  country: string | null;
+  postOffices: string[];
+  message: string;
+}
+
+export function useCountries() {
+  return useQuery<CountryItem[]>({
+    queryKey: ["locations", "countries"],
+    queryFn: () => apiFetch<CountryItem[]>("/locations/countries"),
+    staleTime: 1000 * 60 * 60, // 1 hour
+  });
+}
+
+export function useStates(countryCode = "IN") {
+  return useQuery<StateItem[]>({
+    queryKey: ["locations", "states", countryCode],
+    queryFn: () => apiFetch<StateItem[]>(`/locations/states?countryCode=${encodeURIComponent(countryCode)}`),
+    staleTime: 1000 * 60 * 30, // 30 mins
+  });
+}
+
+export function useCities(countryCode = "IN", stateName?: string) {
+  return useQuery<CityItem[]>({
+    queryKey: ["locations", "cities", countryCode, stateName],
+    queryFn: () => {
+      if (!stateName) return [];
+      return apiFetch<CityItem[]>(
+        `/locations/cities?countryCode=${encodeURIComponent(countryCode)}&stateName=${encodeURIComponent(stateName)}`
+      );
+    },
+    enabled: Boolean(stateName),
+    staleTime: 1000 * 60 * 30,
+  });
+}
+
+export function useVerifyPincode(pincode?: string) {
+  const clean = (pincode ?? "").replace(/\D/g, "");
+  return useQuery<PincodeVerification>({
+    queryKey: ["locations", "pincode", clean],
+    queryFn: () => apiFetch<PincodeVerification>(`/locations/pincode/${clean}`),
+    enabled: clean.length === 6,
+    staleTime: 1000 * 60 * 60,
+  });
+}
+
+
+/* ── Delivery Options & Shipping Rates ──────────────── */
+export interface ApiDeliveryConfig {
+  id: string;
+  businessId: string;
+  standardName: string;
+  standardCharge: number;
+  freeShippingThreshold: number;
+  standardEstimate: string;
+  expressEnabled: boolean;
+  expressName: string;
+  expressCharge: number;
+  expressEstimate: string;
+}
+
+export function useDeliveryConfig() {
+  return useQuery<ApiDeliveryConfig>({
+    queryKey: ["delivery-options"],
+    queryFn: async () => {
+      try {
+        const res = await apiFetch<ApiDeliveryConfig>("/delivery-options");
+        return res ?? {
+          id: "default",
+          businessId: "default",
+          standardName: "Standard Delivery",
+          standardCharge: 0,
+          freeShippingThreshold: 999,
+          standardEstimate: "3–5 business days",
+          expressEnabled: false,
+          expressName: "Express Delivery",
+          expressCharge: 150,
+          expressEstimate: "1–2 business days",
+        };
+      } catch {
+        return {
+          id: "default",
+          businessId: "default",
+          standardName: "Standard Delivery",
+          standardCharge: 0,
+          freeShippingThreshold: 999,
+          standardEstimate: "3–5 business days",
+          expressEnabled: false,
+          expressName: "Express Delivery",
+          expressCharge: 150,
+          expressEstimate: "1–2 business days",
+        };
+      }
+    },
+    staleTime: 1000 * 60 * 15,
   });
 }

@@ -606,13 +606,13 @@ export function ShopProvider({ children }: { children: ReactNode }) {
         const cleanPincode = (address.pincode ?? "").replace(/\D/g, "").slice(0, 6);
         const reqBody = {
           recipientName: address.fullName,
-          phone: cleanPhone || "9820441120",
+          phone: cleanPhone,
           addressLine1: address.line1,
           addressLine2: address.line2 || null,
           city: address.city,
           state: address.state,
           country: "India",
-          pincode: cleanPincode || "400013",
+          pincode: cleanPincode,
           addressType: "HOME",
           isDefault: address.isDefault,
         };

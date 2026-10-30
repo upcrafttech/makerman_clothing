@@ -10,6 +10,8 @@ import {
   ShieldCheck,
   Truck,
   Wallet,
+  Clock,
+  Zap,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
@@ -26,8 +28,11 @@ import {
   useVerifyRazorpayPayment,
   useProducts,
   useCustomerAddresses,
+  useCreateCustomerAddress,
   usePaymentConfig,
+  useDeliveryConfig,
 } from "@/hooks/use-api";
+import { StorefrontLocationSelector } from "@/components/common/storefront-location-selector";
 import { authStore } from "@/lib/auth-store";
 import { getRegisteredProduct } from "@/lib/adapters";
 import { openRazorpayCheckout } from "@/lib/razorpay";
@@ -45,8 +50,9 @@ export const Route = createFileRoute("/checkout")({
 });
 
 export function CheckoutPage() {
-  const { cart, subtotal, addresses, placeOrder, clearCart } = useShop();
+  const { cart, subtotal, addresses, placeOrder, clearCart, saveAddress } = useShop();
   const { data: apiAddresses } = useCustomerAddresses();
+  const createAddressMutation = useCreateCustomerAddress();
 
   const availableAddresses = (apiAddresses && apiAddresses.length > 0 ? apiAddresses : addresses).filter(
     (a) => a.id !== "addr-1" && a.id !== "addr-2" && a.fullName !== "Aarav Deshpande",
@@ -57,6 +63,8 @@ export function CheckoutPage() {
   const [shippingMethod, setShippingMethod] = useState<"standard" | "express">("standard");
   const [paymentMethod, setPaymentMethod] = useState<"upi" | "card" | "netbanking" | "cod">("upi");
   const [confirmedOrder, setConfirmedOrder] = useState<Order | null>(null);
+  const [saveAddressToAccount, setSaveAddressToAccount] = useState(true);
+  const [isSavingAddress, setIsSavingAddress] = useState(false);
   const { data: paymentConfig, isLoading: paymentConfigLoading } = usePaymentConfig();
   const onlinePaymentEnabled = paymentConfig?.onlinePaymentEnabled ?? false;
 
@@ -74,33 +82,182 @@ export function CheckoutPage() {
   }, [availableAddresses]);
 
   // Address form fields with Indian localization defaults
-  const [newAddress, setNewAddress] = useState<Partial<Address>>({
+  const [newAddress, setNewAddress] = useState<Partial<Address> & { country?: string }>({
     fullName: "",
     phone: "",
     line1: "",
     line2: "",
     city: "",
     state: "",
+    country: "India",
     pincode: "",
   });
 
-  const activeLines = cart.filter((l) => !l.savedForLater);
-  const shippingExtra = shippingMethod === "express" ? 150 : 0;
-  const { shipping, tax, total } = cartTotals(subtotal, 0);
-  const finalTotal = total + shippingExtra;
+  // Pre-fill user details if logged in
+  useEffect(() => {
+    const user = authStore.get();
+    if (user) {
+      setNewAddress((prev) => ({
+        ...prev,
+        fullName: prev.fullName || user.name || "",
+        phone: prev.phone || (user.phone ? user.phone.replace(/\D/g, "").slice(-10) : ""),
+      }));
+    }
+  }, []);
 
-  const currentAddress: Address =
-    availableAddresses.find((a) => a.id === selectedAddressId) ?? {
-      id: "addr-custom",
-      fullName: newAddress.fullName || "Guest Customer",
-      phone: newAddress.phone || "9820441120",
-      line1: newAddress.line1 || "Kamala Mills",
-      line2: newAddress.line2,
-      city: newAddress.city || "Mumbai",
-      state: newAddress.state || "Maharashtra",
-      pincode: newAddress.pincode || "400013",
-      isDefault: false,
-    };
+  const { data: deliveryConfig } = useDeliveryConfig();
+  const activeLines = cart.filter((l) => !l.savedForLater);
+  const standardCharge = Number(deliveryConfig?.standardCharge ?? 0);
+  const freeThreshold = Number(deliveryConfig?.freeShippingThreshold ?? 999);
+  const isFreeStandard = subtotal >= freeThreshold;
+  const standardShipping = isFreeStandard ? 0 : standardCharge;
+  const expressCharge = Number(deliveryConfig?.expressCharge ?? 150);
+  const expressEnabled = Boolean(deliveryConfig?.expressEnabled);
+
+  const effectiveShipping = shippingMethod === "express" && expressEnabled ? expressCharge : standardShipping;
+  const { tax } = cartTotals(subtotal, 0);
+  const finalTotal = subtotal + effectiveShipping + tax;
+
+  const activeDeliveryEstimate = shippingMethod === "express" && expressEnabled
+    ? (deliveryConfig?.expressEstimate || "1–2 business days")
+    : (deliveryConfig?.standardEstimate || "3–5 business days");
+
+  const selectedSavedAddress = availableAddresses.find((a) => a.id === selectedAddressId);
+  const currentAddress: Address = selectedSavedAddress ?? {
+    id: "addr-custom",
+    fullName: newAddress.fullName?.trim() || "",
+    phone: newAddress.phone?.trim() || "",
+    line1: newAddress.line1?.trim() || "",
+    line2: newAddress.line2?.trim() || "",
+    city: newAddress.city?.trim() || "",
+    state: newAddress.state?.trim() || "",
+    pincode: newAddress.pincode?.trim() || "",
+    isDefault: false,
+  };
+
+  const persistNewAddress = async (): Promise<string | null> => {
+    if (!newAddress.fullName?.trim()) {
+      toast.error("Please enter your full name");
+      return null;
+    }
+    const rawPhone = (newAddress.phone ?? "").replace(/\D/g, "");
+    const cleanPhone =
+      rawPhone.length === 12 && rawPhone.startsWith("91")
+        ? rawPhone.slice(2)
+        : rawPhone.length === 11 && rawPhone.startsWith("0")
+        ? rawPhone.slice(1)
+        : rawPhone.slice(-10);
+
+    if (cleanPhone.length !== 10) {
+      toast.error("Please enter a valid 10-digit mobile number");
+      return null;
+    }
+    if (!newAddress.line1?.trim()) {
+      toast.error("Please enter your street address");
+      return null;
+    }
+    if (!newAddress.city?.trim()) {
+      toast.error("Please select or enter your city");
+      return null;
+    }
+    if (!newAddress.state?.trim()) {
+      toast.error("Please select or enter your state");
+      return null;
+    }
+    const cleanPin = (newAddress.pincode ?? "").replace(/\D/g, "").slice(0, 6);
+    if (cleanPin.length !== 6) {
+      toast.error("Please enter a valid 6-digit PIN code");
+      return null;
+    }
+
+    const country = newAddress.country || "India";
+    const token = authStore.getToken();
+    setIsSavingAddress(true);
+
+    try {
+      if (token) {
+        const res = await createAddressMutation.mutateAsync({
+          recipientName: newAddress.fullName.trim(),
+          phone: cleanPhone,
+          addressLine1: newAddress.line1.trim(),
+          addressLine2: newAddress.line2?.trim() || null,
+          city: newAddress.city.trim(),
+          state: newAddress.state.trim(),
+          country,
+          pincode: cleanPin,
+          addressType: "HOME",
+          isDefault: availableAddresses.length === 0,
+        });
+
+        const createdId = res?.data?.id ?? `addr-${Date.now()}`;
+        const localAddr: Address = {
+          id: createdId,
+          fullName: newAddress.fullName.trim(),
+          phone: cleanPhone,
+          line1: newAddress.line1.trim(),
+          line2: newAddress.line2?.trim() || undefined,
+          city: newAddress.city.trim(),
+          state: newAddress.state.trim(),
+          pincode: cleanPin,
+          isDefault: availableAddresses.length === 0,
+        };
+        saveAddress(localAddr);
+        setSelectedAddressId(createdId);
+        toast.success("Delivery address saved to your account");
+        return createdId;
+      } else {
+        const localId = `addr-${Date.now()}`;
+        const localAddr: Address = {
+          id: localId,
+          fullName: newAddress.fullName.trim(),
+          phone: cleanPhone,
+          line1: newAddress.line1.trim(),
+          line2: newAddress.line2?.trim() || undefined,
+          city: newAddress.city.trim(),
+          state: newAddress.state.trim(),
+          pincode: cleanPin,
+          isDefault: availableAddresses.length === 0,
+        };
+        saveAddress(localAddr);
+        setSelectedAddressId(localId);
+        toast.success("Address saved for checkout");
+        return localId;
+      }
+    } catch (err: any) {
+      console.warn("Failed to persist address to account:", err);
+      const localId = `addr-${Date.now()}`;
+      const localAddr: Address = {
+        id: localId,
+        fullName: newAddress.fullName.trim(),
+        phone: cleanPhone,
+        line1: newAddress.line1.trim(),
+        line2: newAddress.line2?.trim() || undefined,
+        city: newAddress.city.trim(),
+        state: newAddress.state.trim(),
+        pincode: cleanPin,
+        isDefault: availableAddresses.length === 0,
+      };
+      saveAddress(localAddr);
+      setSelectedAddressId(localId);
+      return localId;
+    } finally {
+      setIsSavingAddress(false);
+    }
+  };
+
+  const handleProceedToPayment = async () => {
+    if (selectedAddressId === "new") {
+      const savedId = await persistNewAddress();
+      if (!savedId) return;
+    } else {
+      const selected = availableAddresses.find((a) => a.id === selectedAddressId);
+      if (!selected) {
+        toast.error("Please select a delivery address");
+        return;
+      }
+    }
+    setStep(3);
+  };
 
   const createOrderMutation = useCreateOrder();
   const createRazorpayOrderMutation = useCreateRazorpayOrder();
@@ -144,12 +301,12 @@ export function CheckoutPage() {
         id: finalOrderId,
         date: new Date().toISOString().split("T")[0]!,
         status: "Confirmed",
-        deliveryDate: "3–4 Business Days",
+        deliveryDate: activeDeliveryEstimate,
         paymentMethod: finalPaymentMethod,
         address: currentAddress,
         items,
         subtotal,
-        shipping: shipping + shippingExtra,
+        shipping: effectiveShipping,
         tax,
         total: finalTotal,
       };
@@ -181,25 +338,56 @@ export function CheckoutPage() {
       .filter(Boolean);
 
     const authUser = authStore.get();
+    const rawPhone = (currentAddress.phone ?? "").replace(/\D/g, "");
     const cleanPhone =
-      currentAddress.phone.replace("+91", "").replace(/\D/g, "").slice(-10) || "9820441120";
-    const cleanPincode =
-      currentAddress.pincode.replace(/\D/g, "").slice(0, 6) || "400013";
+      rawPhone.length === 12 && rawPhone.startsWith("91")
+        ? rawPhone.slice(2)
+        : rawPhone.length === 11 && rawPhone.startsWith("0")
+        ? rawPhone.slice(1)
+        : rawPhone.slice(-10);
+    const cleanPincode = (currentAddress.pincode ?? "").replace(/\D/g, "").slice(0, 6);
+
+    if (!currentAddress.fullName?.trim()) {
+      toast.error("Please provide your full name");
+      setStep(2);
+      setIsPlacing(false);
+      return;
+    }
+    if (cleanPhone.length !== 10) {
+      toast.error("Please provide a valid 10-digit mobile number");
+      setStep(2);
+      setIsPlacing(false);
+      return;
+    }
+    if (!currentAddress.line1?.trim() || !currentAddress.city?.trim() || !currentAddress.state?.trim()) {
+      toast.error("Please provide a complete delivery address");
+      setStep(2);
+      setIsPlacing(false);
+      return;
+    }
+    if (cleanPincode.length !== 6) {
+      toast.error("Please provide a valid 6-digit PIN code");
+      setStep(2);
+      setIsPlacing(false);
+      return;
+    }
 
     const payload = {
       items: apiItems,
       discountAmount: 0,
       totalAmount: finalTotal,
-      customerName: currentAddress.fullName || "Guest Customer",
+      customerName: currentAddress.fullName.trim(),
       customerEmail: authUser?.email || undefined,
       customerPhone: cleanPhone,
-      address: currentAddress.line1,
-      landmark: currentAddress.line2 || "",
-      city: currentAddress.city,
-      state: currentAddress.state,
-      country: "India",
+      address: currentAddress.line1.trim(),
+      landmark: currentAddress.line2?.trim() || "",
+      city: currentAddress.city.trim(),
+      state: currentAddress.state.trim(),
+      country: currentAddress.country || newAddress.country || "India",
       pincode: cleanPincode,
       paymentMethod: paymentMethod === "cod" ? "COD" : "ONLINE",
+      saveAddress: saveAddressToAccount,
+      savedAddressId: selectedSavedAddress && !selectedSavedAddress.id.startsWith("addr-") ? selectedSavedAddress.id : undefined,
     };
 
     let backendOrder: { id: string } | null = null;
@@ -482,129 +670,154 @@ export function CheckoutPage() {
                   </div>
 
                   {selectedAddressId === "new" && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-3 border-t border-border">
-                      <div>
-                        <label className="text-[11px] font-semibold text-muted-foreground block mb-1 uppercase tracking-wider">
-                          Full Name
-                        </label>
-                        <input
-                          type="text"
-                          value={newAddress.fullName}
-                          onChange={(e) => setNewAddress({ ...newAddress, fullName: e.target.value })}
-                          className="w-full h-11 border border-border px-3 text-xs rounded-sm outline-none focus:border-foreground"
-                        />
+                    <div className="space-y-4 pt-3 border-t border-border">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="text-[11px] font-semibold text-muted-foreground block mb-1 uppercase tracking-wider">
+                            Full Name
+                          </label>
+                          <input
+                            type="text"
+                            value={newAddress.fullName}
+                            onChange={(e) => setNewAddress({ ...newAddress, fullName: e.target.value })}
+                            placeholder="e.g. Rahul Sharma"
+                            className="w-full h-11 border border-border px-3 text-xs rounded-sm outline-none bg-background focus:border-foreground"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[11px] font-semibold text-muted-foreground block mb-1 uppercase tracking-wider">
+                            Mobile Number (+91)
+                          </label>
+                          <input
+                            type="tel"
+                            value={newAddress.phone}
+                            onChange={(e) => setNewAddress({ ...newAddress, phone: e.target.value })}
+                            placeholder="10-digit mobile number"
+                            className="w-full h-11 border border-border px-3 text-xs rounded-sm outline-none bg-background focus:border-foreground font-mono"
+                          />
+                        </div>
+                        <div className="sm:col-span-2">
+                          <label className="text-[11px] font-semibold text-muted-foreground block mb-1 uppercase tracking-wider">
+                            Street Address / House / Flat
+                          </label>
+                          <input
+                            type="text"
+                            value={newAddress.line1}
+                            onChange={(e) => setNewAddress({ ...newAddress, line1: e.target.value })}
+                            placeholder="Flat/House No., Building, Street"
+                            className="w-full h-11 border border-border px-3 text-xs rounded-sm outline-none bg-background focus:border-foreground"
+                          />
+                        </div>
+                        <div className="sm:col-span-2">
+                          <label className="text-[11px] font-semibold text-muted-foreground block mb-1 uppercase tracking-wider">
+                            Apartment / Area / Locality (Optional)
+                          </label>
+                          <input
+                            type="text"
+                            value={newAddress.line2}
+                            onChange={(e) => setNewAddress({ ...newAddress, line2: e.target.value })}
+                            placeholder="Landmark or locality"
+                            className="w-full h-11 border border-border px-3 text-xs rounded-sm outline-none bg-background focus:border-foreground"
+                          />
+                        </div>
                       </div>
-                      <div>
-                        <label className="text-[11px] font-semibold text-muted-foreground block mb-1 uppercase tracking-wider">
-                          Mobile Number (+91)
+
+                      {/* Searchable Country, State, City, PIN Code with Live Verification */}
+                      <StorefrontLocationSelector
+                        country={newAddress.country || "India"}
+                        state={newAddress.state || ""}
+                        city={newAddress.city || ""}
+                        pincode={newAddress.pincode || ""}
+                        onCountryChange={(cntry) => setNewAddress((prev) => ({ ...prev, country: cntry }))}
+                        onStateChange={(st) => setNewAddress((prev) => ({ ...prev, state: st }))}
+                        onCityChange={(cty) => setNewAddress((prev) => ({ ...prev, city: cty }))}
+                        onPincodeChange={(pin) => setNewAddress((prev) => ({ ...prev, pincode: pin }))}
+                      />
+
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-2">
+                        <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer select-none">
+                          <input
+                            type="checkbox"
+                            checked={saveAddressToAccount}
+                            onChange={(e) => setSaveAddressToAccount(e.target.checked)}
+                            className="h-4 w-4 rounded-xs border-border text-foreground accent-foreground"
+                          />
+                          <span>Save this delivery address to my account for faster checkout</span>
                         </label>
-                        <input
-                          type="tel"
-                          value={newAddress.phone}
-                          onChange={(e) => setNewAddress({ ...newAddress, phone: e.target.value })}
-                          className="w-full h-11 border border-border px-3 text-xs rounded-sm outline-none focus:border-foreground font-mono"
-                        />
-                      </div>
-                      <div className="sm:col-span-2">
-                        <label className="text-[11px] font-semibold text-muted-foreground block mb-1 uppercase tracking-wider">
-                          Street Address / House / Flat
-                        </label>
-                        <input
-                          type="text"
-                          value={newAddress.line1}
-                          onChange={(e) => setNewAddress({ ...newAddress, line1: e.target.value })}
-                          className="w-full h-11 border border-border px-3 text-xs rounded-sm outline-none focus:border-foreground"
-                        />
-                      </div>
-                      <div className="sm:col-span-2">
-                        <label className="text-[11px] font-semibold text-muted-foreground block mb-1 uppercase tracking-wider">
-                          Apartment / Area / Locality
-                        </label>
-                        <input
-                          type="text"
-                          value={newAddress.line2}
-                          onChange={(e) => setNewAddress({ ...newAddress, line2: e.target.value })}
-                          className="w-full h-11 border border-border px-3 text-xs rounded-sm outline-none focus:border-foreground"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-[11px] font-semibold text-muted-foreground block mb-1 uppercase tracking-wider">
-                          City
-                        </label>
-                        <input
-                          type="text"
-                          value={newAddress.city}
-                          onChange={(e) => setNewAddress({ ...newAddress, city: e.target.value })}
-                          className="w-full h-11 border border-border px-3 text-xs rounded-sm outline-none focus:border-foreground"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-[11px] font-semibold text-muted-foreground block mb-1 uppercase tracking-wider">
-                          State
-                        </label>
-                        <input
-                          type="text"
-                          value={newAddress.state}
-                          onChange={(e) => setNewAddress({ ...newAddress, state: e.target.value })}
-                          className="w-full h-11 border border-border px-3 text-xs rounded-sm outline-none focus:border-foreground"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-[11px] font-semibold text-muted-foreground block mb-1 uppercase tracking-wider">
-                          PIN Code
-                        </label>
-                        <input
-                          type="text"
-                          value={newAddress.pincode}
-                          onChange={(e) => setNewAddress({ ...newAddress, pincode: e.target.value })}
-                          className="w-full h-11 border border-border px-3 text-xs rounded-sm outline-none focus:border-foreground font-mono"
-                        />
+
+                        <button
+                          type="button"
+                          disabled={isSavingAddress}
+                          onClick={persistNewAddress}
+                          className="text-xs font-semibold text-foreground underline hover:text-muted-foreground transition-colors disabled:opacity-50"
+                        >
+                          {isSavingAddress ? "Saving address..." : "+ Save to Address Book"}
+                        </button>
                       </div>
                     </div>
                   )}
 
-                  {/* Shipping speed selection */}
+                  {/* Delivery Option */}
                   <div className="pt-3 border-t border-border space-y-2.5">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                      Select Shipping Speed
-                    </p>
-                    <label
-                      onClick={() => setShippingMethod("standard")}
-                      className={cn(
-                        "p-3.5 border text-xs cursor-pointer rounded-sm flex items-center justify-between transition-colors",
-                        shippingMethod === "standard" ? "border-foreground bg-[#FAF8F5]" : "border-border",
-                      )}
-                    >
-                      <div className="flex items-center gap-3">
-                        <Truck className="h-4 w-4 text-amber-600" />
-                        <div>
-                          <p className="font-semibold text-foreground">Standard Express Pan-India</p>
-                          <p className="text-muted-foreground text-[11px]">2–4 business days delivery</p>
-                        </div>
-                      </div>
-                      <span className="font-semibold">{shipping === 0 ? "Complimentary" : formatINR(shipping)}</span>
-                    </label>
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                        Delivery Option
+                      </p>
+                      <span className="text-[11px] text-muted-foreground flex items-center gap-1 font-medium">
+                        <Clock className="h-3 w-3 text-amber-600" />
+                        {activeDeliveryEstimate}
+                      </span>
+                    </div>
 
-                    <label
-                      onClick={() => setShippingMethod("express")}
+                    {/* Single Normal Delivery Option */}
+                    <div
                       className={cn(
-                        "p-3.5 border text-xs cursor-pointer rounded-sm flex items-center justify-between transition-colors",
-                        shippingMethod === "express" ? "border-foreground bg-[#FAF8F5]" : "border-border",
+                        "p-3.5 border text-xs rounded-sm flex items-center justify-between transition-colors border-foreground bg-[#FAF8F5]",
                       )}
                     >
                       <div className="flex items-center gap-3">
-                        <Package className="h-4 w-4 text-amber-600" />
+                        <Truck className="h-4 w-4 text-amber-600 shrink-0" />
                         <div>
-                          <p className="font-semibold text-foreground">Priority Next-Day Courier (Metro Only)</p>
-                          <p className="text-muted-foreground text-[11px]">Guaranteed dispatch in 12 hours</p>
+                          <p className="font-semibold text-foreground">
+                            {deliveryConfig?.standardName || "Standard Delivery"}
+                          </p>
+                          <p className="text-muted-foreground text-[11px]">
+                            {deliveryConfig?.standardEstimate || "3–5 business days"} delivery
+                          </p>
                         </div>
                       </div>
-                      <span className="font-semibold">{formatINR(150)}</span>
-                    </label>
+                      <span className="font-semibold text-foreground">
+                        {standardShipping === 0 ? "Complimentary" : formatINR(standardShipping)}
+                      </span>
+                    </div>
+
+                    {/* Optional Express (Only if client enabled in admin panel) */}
+                    {expressEnabled && (
+                      <label
+                        onClick={() => setShippingMethod(shippingMethod === "express" ? "standard" : "express")}
+                        className={cn(
+                          "p-3.5 border text-xs cursor-pointer rounded-sm flex items-center justify-between transition-colors",
+                          shippingMethod === "express" ? "border-foreground bg-[#FAF8F5]" : "border-border",
+                        )}
+                      >
+                        <div className="flex items-center gap-3">
+                          <Zap className="h-4 w-4 text-amber-600 shrink-0" />
+                          <div>
+                            <p className="font-semibold text-foreground">
+                              {deliveryConfig?.expressName || "Express Delivery"}
+                            </p>
+                            <p className="text-muted-foreground text-[11px]">
+                              {deliveryConfig?.expressEstimate || "1–2 business days"}
+                            </p>
+                          </div>
+                        </div>
+                        <span className="font-semibold">{formatINR(expressCharge)}</span>
+                      </label>
+                    )}
                   </div>
 
                   <Button
-                    onClick={() => setStep(3)}
+                    onClick={handleProceedToPayment}
                     className="h-12 px-7 text-xs font-semibold uppercase tracking-wider bg-ink text-ink-foreground rounded-sm"
                   >
                     Proceed to Payment →
@@ -765,9 +978,11 @@ export function CheckoutPage() {
                   <span className="font-semibold text-foreground">{formatINR(subtotal)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>Shipping ({shippingMethod === "express" ? "Priority Express" : "Standard"})</span>
+                  <span>
+                    Delivery ({shippingMethod === "express" && expressEnabled ? (deliveryConfig?.expressName || "Express") : (deliveryConfig?.standardName || "Standard")})
+                  </span>
                   <span className="font-semibold text-foreground">
-                    {shipping + shippingExtra === 0 ? "Complimentary" : formatINR(shipping + shippingExtra)}
+                    {effectiveShipping === 0 ? "Complimentary" : formatINR(effectiveShipping)}
                   </span>
                 </div>
                 <div className="flex justify-between">

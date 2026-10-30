@@ -14,6 +14,12 @@ import {
   Truck,
   ExternalLink,
   User,
+  Clock,
+  ChevronDown,
+  ChevronUp,
+  Copy,
+  CheckCircle2,
+  FileText,
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -27,17 +33,23 @@ import { cn } from "@/lib/utils";
 import { productService } from "@/services";
 import { authStore } from "@/lib/auth-store";
 import { getRegisteredProduct } from "@/lib/adapters";
+import { StorefrontLocationSelector } from "@/components/common/storefront-location-selector";
+import { GoogleAuthButton } from "@/components/common/google-auth-button";
+import { parseGoogleJwt } from "@/lib/google-auth";
 import {
   useLogin,
   useRegister,
   useVerifyOtp,
   useResendOtp,
+  useGoogleLogin,
+  useGoogleRegister,
   useOrders,
   useApiWishlist,
   useCustomerAddresses,
   useCreateCustomerAddress,
   useDeleteCustomerAddress,
   useSetDefaultCustomerAddress,
+  useDeliveryConfig,
 } from "@/hooks/use-api";
 import type { Address, Order } from "@/types";
 
@@ -66,7 +78,8 @@ export function AccountPage() {
   } = useShop();
 
   const [activeTab, setActiveTab] = useState<"overview" | "orders" | "addresses" | "profile" | "favorites">("overview");
-  const [authMode, setAuthMode] = useState<"login" | "register" | "otp">("login");
+  const [authMode, setAuthMode] = useState<"login" | "register" | "otp" | "google-profile">("login");
+  const [googleCredential, setGoogleCredential] = useState("");
   const [authEmail, setAuthEmail] = useState("");
   const [authPassword, setAuthPassword] = useState("");
   const [authName, setAuthName] = useState("");
@@ -78,12 +91,15 @@ export function AccountPage() {
   const registerMutation = useRegister();
   const verifyOtpMutation = useVerifyOtp();
   const resendOtpMutation = useResendOtp();
+  const googleLoginMutation = useGoogleLogin();
+  const googleRegisterMutation = useGoogleRegister();
   const { data: apiOrdersData } = useOrders();
   const { data: apiWishlistData } = useApiWishlist();
   const { data: apiAddresses, isLoading: isAddressesLoading } = useCustomerAddresses();
   const createAddressMutation = useCreateCustomerAddress();
   const deleteAddressMutation = useDeleteCustomerAddress();
   const setDefaultAddressMutation = useSetDefaultCustomerAddress();
+  const { data: deliveryConfig } = useDeliveryConfig();
 
   const currentAddresses = (session && apiAddresses ? apiAddresses : addresses).filter(
     (a) => a.id !== "addr-1" && a.id !== "addr-2" && a.fullName !== "Aarav Deshpande",
@@ -213,6 +229,89 @@ export function AccountPage() {
     }
   };
 
+  const handleGoogleAuthLogin = async (credential: string) => {
+    setIsSubmitting(true);
+    try {
+      const res = await googleLoginMutation.mutateAsync({ credential });
+      authStore.set(res);
+      signIn(res.email, res.name);
+      toast.success("Welcome back", { description: res.name });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "";
+      const parsed = parseGoogleJwt(credential);
+      if (parsed?.email) {
+        setGoogleCredential(credential);
+        setAuthEmail(parsed.email);
+        setAuthName(parsed.name || "");
+        setAuthPassword("");
+        setAuthMode("google-profile");
+        toast.info("Complete your profile", {
+          description: "Please enter your mobile phone and password to finish registration.",
+        });
+      } else {
+        toast.error("Google sign-in failed", { description: msg || "Please try again" });
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleGoogleAuthSignup = async (credential: string) => {
+    const parsed = parseGoogleJwt(credential);
+    if (!parsed?.email) {
+      toast.error("Failed to read Google account information");
+      return;
+    }
+    setGoogleCredential(credential);
+    setAuthEmail(parsed.email);
+    setAuthName(parsed.name || "");
+    setAuthPassword("");
+    setAuthMode("google-profile");
+    toast.success("Google account verified", {
+      description: "Please enter your mobile phone and password to complete registration.",
+    });
+  };
+
+  const handleGoogleCompleteProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!authName.trim()) {
+      toast.error("Please enter your name");
+      return;
+    }
+    const cleanedPhone = authPhone.replace(/\D/g, "").slice(-10);
+    if (!cleanedPhone || cleanedPhone.length !== 10) {
+      toast.error("Please enter a valid 10-digit mobile number");
+      return;
+    }
+    if (authPassword.length < 6) {
+      toast.error("Password must be at least 6 characters");
+      return;
+    }
+    if (!googleCredential) {
+      toast.error("Google session expired. Please sign in with Google again.");
+      setAuthMode("register");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const res = await googleRegisterMutation.mutateAsync({
+        credential: googleCredential,
+        name: authName.trim(),
+        phone: cleanedPhone,
+        password: authPassword,
+      });
+      authStore.set(res);
+      signIn(res.email, res.name);
+      toast.success("Registration complete", { description: `Welcome ${res.name}` });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to complete registration";
+      toast.error("Registration failed", { description: msg });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handleCreateAddress = async (e: React.FormEvent) => {
     e.preventDefault();
     if (
@@ -320,18 +419,22 @@ export function AccountPage() {
                 ? "Sign In to Makerman"
                 : authMode === "register"
                   ? "Create Your Account"
-                  : "Verify Your Email"}
+                  : authMode === "google-profile"
+                    ? "Complete Your Profile"
+                    : "Verify Your Email"}
             </h1>
             <p className="text-xs text-muted-foreground leading-relaxed">
               {authMode === "otp"
                 ? `Enter the 6-digit one-time code sent to ${authEmail}`
-                : "Track orders, access saved favorites, and manage your wardrobe."}
+                : authMode === "google-profile"
+                  ? "Connected via Google. Enter your mobile phone and set a password to finish."
+                  : "Track orders, access saved favorites, and manage your wardrobe."}
             </p>
           </div>
 
-          <div className="border border-border p-6 sm:p-8 bg-background rounded-sm shadow-soft space-y-4">
+          <div className="border border-border p-6 sm:p-8 bg-background rounded-sm shadow-soft space-y-4 overflow-hidden">
             {/* Mode Tabs */}
-            {authMode !== "otp" && (
+            {authMode !== "otp" && authMode !== "google-profile" && (
               <div className="flex border-b border-border/70 mb-4 pb-2">
                 <button
                   type="button"
@@ -409,6 +512,12 @@ export function AccountPage() {
                     Create Account
                   </button>
                 </p>
+
+                <GoogleAuthButton
+                  mode="login"
+                  onCredential={handleGoogleAuthLogin}
+                  disabled={isSubmitting}
+                />
               </form>
             )}
 
@@ -489,6 +598,104 @@ export function AccountPage() {
                     Sign In
                   </button>
                 </p>
+
+                <GoogleAuthButton
+                  mode="signup"
+                  onCredential={handleGoogleAuthSignup}
+                  disabled={isSubmitting}
+                />
+              </form>
+            )}
+
+            {/* Form: GOOGLE PROFILE COMPLETION */}
+            {authMode === "google-profile" && (
+              <form onSubmit={handleGoogleCompleteProfile} noValidate className="space-y-4">
+                <div className="p-3 bg-muted/40 border border-border/70 rounded flex items-center gap-2.5 text-xs">
+                  <div className="h-2 w-2 rounded-full bg-emerald-500 shrink-0" />
+                  <span className="text-muted-foreground">
+                    Google Account Verified: <strong className="text-foreground font-medium">{authEmail}</strong>
+                  </span>
+                </div>
+
+                <div>
+                  <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground block mb-1">
+                    Full Name *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={authName}
+                    onChange={(e) => setAuthName(e.target.value)}
+                    placeholder="e.g. Siddharth Sen"
+                    className="w-full h-11 border border-border px-3 text-xs rounded-sm outline-none focus:border-foreground"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground block mb-1">
+                    Email Address (Verified by Google)
+                  </label>
+                  <input
+                    type="email"
+                    disabled
+                    readOnly
+                    value={authEmail}
+                    className="w-full h-11 border border-border/60 bg-muted/40 px-3 text-xs rounded-sm outline-none text-muted-foreground cursor-not-allowed"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground block mb-1">
+                    Mobile Phone *
+                  </label>
+                  <input
+                    type="tel"
+                    required
+                    value={authPhone}
+                    onChange={(e) => setAuthPhone(e.target.value)}
+                    placeholder="98204 41120"
+                    className="w-full h-11 border border-border px-3 text-xs rounded-sm outline-none focus:border-foreground font-mono"
+                  />
+                  <span className="text-[10px] text-muted-foreground block mt-1">
+                    Mandatory for delivery tracking and order notifications
+                  </span>
+                </div>
+
+                <div>
+                  <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground block mb-1">
+                    Create Password *
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    value={authPassword}
+                    onChange={(e) => setAuthPassword(e.target.value)}
+                    placeholder="At least 6 characters"
+                    className="w-full h-11 border border-border px-3 text-xs rounded-sm outline-none focus:border-foreground"
+                  />
+                </div>
+
+                <Button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="w-full h-12 text-xs font-semibold uppercase tracking-[0.14em] bg-ink text-ink-foreground hover:bg-ink/90 rounded-sm mt-2"
+                >
+                  {isSubmitting ? "Completing Profile..." : "Complete Registration & Sign In"}
+                </Button>
+
+                <p className="text-[11px] text-center text-muted-foreground pt-2">
+                  Want to use standard registration instead?{" "}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setGoogleCredential("");
+                      setAuthMode("register");
+                    }}
+                    className="text-amber-600 font-medium hover:underline"
+                  >
+                    Back to Register
+                  </button>
+                </p>
               </form>
             )}
 
@@ -546,44 +753,58 @@ export function AccountPage() {
   const liveUser = authStore.get();
   const liveOrders = apiOrdersData?.content;
   const effectiveOrders: Order[] = (session && authStore.getToken()) || liveOrders
-    ? (liveOrders ?? []).map((o) => ({
-        id: o.id,
-        date: new Date(o.createdAt || Date.now()).toLocaleDateString("en-IN", {
+    ? (liveOrders ?? []).map((o) => {
+        const orderDate = new Date(o.createdAt || Date.now());
+        const expectedDate = new Date(orderDate.getTime() + 4 * 24 * 60 * 60 * 1000);
+        const formattedExpected = expectedDate.toLocaleDateString("en-IN", {
+          weekday: "short",
           month: "short",
           day: "numeric",
           year: "numeric",
-        }),
-        status: (o.status || "Order Placed") as Order["status"],
-        deliveryDate: "Estimated 3-5 business days",
-        paymentMethod: o.paymentMethod || "Prepaid",
-        address: addresses[0] || {
-          id: "1",
-          fullName: o.customerName || "Customer",
-          phone: o.customerPhone || "+91 98204 41120",
-          line1: o.shippingAddress || "Main Street",
-          city: "Mumbai",
-          state: "Maharashtra",
-          pincode: "400013",
-          isDefault: true,
-        },
-        items: (o.items || []).map((it) => ({
-          productSlug: it.productId,
-          name: it.productName || "Makerman Garment",
-          size: "Regular",
-          color: "Standard",
-          quantity: it.quantity,
-          price: it.price,
-        })),
-        subtotal: o.totalAmount,
-        shipping: 0,
-        tax: 0,
-        total: o.totalAmount,
-        shipmentStatus: o.shipmentStatus,
-        awbCode: o.awbCode,
-        courierName: o.courierName,
-        trackingUrl: o.trackingUrl,
-        currentLocation: o.currentLocation,
-      }))
+        });
+
+        const configuredEstimate = deliveryConfig?.standardEstimate || "3–5 business days";
+
+        return {
+          id: o.id,
+          date: orderDate.toLocaleDateString("en-IN", {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+          }),
+          status: (o.status || "Order Placed") as Order["status"],
+          deliveryDate: `Estimated ${configuredEstimate}`,
+          expectedArrivalDate: formattedExpected,
+          paymentMethod: o.paymentMethod || "Cash on Delivery",
+          address: {
+            id: `addr-${o.id}`,
+            fullName: o.customerName || liveUser?.name || "Customer",
+            phone: o.customerPhone || liveUser?.phone || "+91 98204 41120",
+            line1: o.shippingAddress || "Kamala Mills, Mumbai (400013)",
+            city: "Mumbai",
+            state: "Maharashtra",
+            pincode: "400013",
+            isDefault: true,
+          },
+          items: (o.items || []).map((it) => ({
+            productSlug: it.productId,
+            name: it.productName || "Makerman Garment",
+            size: "Regular",
+            color: "Standard",
+            quantity: it.quantity,
+            price: it.price,
+          })),
+          subtotal: o.totalAmount,
+          shipping: 0,
+          tax: 0,
+          total: o.totalAmount,
+          shipmentStatus: o.shipmentStatus,
+          awbCode: o.awbCode,
+          courierName: o.courierName,
+          trackingUrl: o.trackingUrl,
+          currentLocation: o.currentLocation,
+        };
+      })
     : orders.filter((o) => !o.id.startsWith("AVL2026"));
 
   const favoriteProducts = wishlist
@@ -731,123 +952,167 @@ export function AccountPage() {
               </div>
             ) : (
               <div className="space-y-6">
-                {effectiveOrders.map((order) => (
-                  <div key={order.id} className="border border-border rounded-sm bg-background overflow-hidden">
-                    {/* Order Header */}
-                    <div className="p-4 sm:p-5 bg-[#FAF8F5] border-b border-border flex flex-wrap items-center justify-between gap-3 text-xs">
-                      <div>
-                        <span className="text-muted-foreground">Order #</span>
-                        <strong className="text-foreground ml-1 font-mono">{order.id}</strong>
-                        <span className="text-muted-foreground ml-3">Date: {order.date}</span>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <span className="px-2.5 py-0.5 rounded-xs bg-emerald-100 text-emerald-800 font-semibold text-[11px]">
-                          {order.status}
-                        </span>
-                        <span className="font-display text-sm font-semibold text-foreground">
-                          {formatINR(order.total)}
-                        </span>
-                      </div>
-                    </div>
+                {effectiveOrders.map((order) => {
+                  const trackingUrl = order.trackingUrl || (order.awbCode ? `https://shiprocket.co/tracking/${order.awbCode}` : null);
+                  const isDelivered = order.status.toUpperCase() === "DELIVERED" || order.shipmentStatus?.toUpperCase() === "DELIVERED";
+                  const isShipped = ["SHIPPED", "IN_TRANSIT", "OUT_FOR_DELIVERY", "DELIVERED"].includes(order.shipmentStatus?.toUpperCase() || "") || ["SHIPPED", "DELIVERED"].includes(order.status.toUpperCase());
+                  const isPacked = ["PACKED", "PICKED_UP", "SHIPPED", "IN_TRANSIT", "OUT_FOR_DELIVERY", "DELIVERED"].includes(order.shipmentStatus?.toUpperCase() || "") || ["CONFIRMED", "SHIPPED", "DELIVERED"].includes(order.status.toUpperCase());
 
-                    {/* Order Items */}
-                    <div className="p-5 divide-y divide-border/60">
-                      {order.items.map((item, idx) => (
-                        <div key={idx} className="py-3 first:pt-0 last:pb-0 flex items-center justify-between text-xs">
-                          <div>
-                            <p className="font-semibold text-foreground">{item.name}</p>
-                            <p className="text-[11px] text-muted-foreground mt-0.5">
-                              Size: {item.size} · Color: {item.color} · Qty: {item.quantity}
-                            </p>
-                          </div>
-                          <span className="font-semibold text-foreground">{formatINR(item.price * item.quantity)}</span>
+                  return (
+                    <div key={order.id} className="border border-border rounded-sm bg-background overflow-hidden shadow-xs">
+                      {/* Order Header */}
+                      <div className="p-4 sm:p-5 bg-[#FAF8F5] border-b border-border flex flex-wrap items-center justify-between gap-3 text-xs">
+                        <div>
+                          <span className="text-muted-foreground">Order #</span>
+                          <strong className="text-foreground ml-1 font-mono">{order.id}</strong>
+                          <span className="text-muted-foreground ml-3">Date: {order.date}</span>
                         </div>
-                      ))}
-                    </div>
+                        <div className="flex items-center gap-3">
+                          <span className="px-2.5 py-0.5 rounded-xs bg-emerald-100 text-emerald-800 font-semibold text-[11px]">
+                            {order.status}
+                          </span>
+                          <span className="font-display text-sm font-semibold text-foreground">
+                            {formatINR(order.total)}
+                          </span>
+                        </div>
+                      </div>
 
-                    {/* Shipment & Live Tracking Section */}
-                    {order.awbCode ? (
-                      <div className="p-4 sm:p-5 bg-gradient-to-r from-emerald-50/40 via-background to-secondary/20 border-t border-border space-y-3">
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <div className="flex items-center gap-2">
-                            <span className="p-1.5 rounded-full bg-emerald-100 text-emerald-800">
-                              <Truck className="h-4 w-4" />
-                            </span>
-                            <div>
-                              <span className="text-xs font-medium text-foreground">
-                                {order.courierName || "Courier Dispatch"}
-                              </span>
-                              <span className="text-[11px] text-muted-foreground ml-2 font-mono">
-                                AWB: {order.awbCode}
-                              </span>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {order.shipmentStatus && (
-                              <span className="px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider bg-primary/10 text-primary">
-                                {order.shipmentStatus.replace(/_/g, " ")}
-                              </span>
+                      {/* Prominent Estimated Delivery Time & Tracking Bar */}
+                      <div className="p-4 bg-muted/30 border-b border-border flex flex-wrap items-center justify-between gap-3 text-xs">
+                        <div className="flex items-center gap-2.5">
+                          <span className="p-2 rounded-full bg-amber-500/15 text-amber-700">
+                            <Clock className="h-4 w-4" />
+                          </span>
+                          <div>
+                            <p className="font-semibold text-foreground flex items-center gap-1.5">
+                              <span>Estimated Delivery:</span>
+                              <span className="text-emerald-700 font-bold">{order.deliveryDate}</span>
+                            </p>
+                            {order.expectedArrivalDate && (
+                              <p className="text-[11px] text-muted-foreground">
+                                Expected to arrive by <strong className="text-foreground">{order.expectedArrivalDate}</strong>
+                              </p>
                             )}
+                          </div>
+                        </div>
+
+                        {/* Live Tracking Link */}
+                        <div>
+                          {trackingUrl ? (
                             <a
-                              href={order.trackingUrl || `https://shiprocket.co/tracking/${order.awbCode}`}
+                              href={trackingUrl}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+                              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-sm bg-ink text-ink-foreground font-semibold text-xs hover:bg-ink/90 transition-colors shadow-xs"
                             >
-                              Track Package <ExternalLink className="h-3 w-3" />
+                              <Truck className="h-3.5 w-3.5" />
+                              <span>Track Package {order.awbCode ? `(AWB: ${order.awbCode})` : ""}</span>
+                              <ExternalLink className="h-3 w-3" />
                             </a>
-                          </div>
+                          ) : (
+                            <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-sm bg-secondary/50 text-muted-foreground text-[11px]">
+                              <Package className="h-3.5 w-3.5 text-amber-600" />
+                              <span>Tracking link generated once dispatched</span>
+                            </div>
+                          )}
                         </div>
+                      </div>
 
-                        {order.currentLocation && (
-                          <p className="text-[11px] text-muted-foreground flex items-center gap-1.5">
-                            <MapPin className="h-3.5 w-3.5 text-primary" />
-                            <span>Current Location: <strong className="text-foreground">{order.currentLocation}</strong></span>
-                          </p>
-                        )}
-
-                        {/* Status Stepper */}
-                        <div className="pt-2">
-                          <div className="grid grid-cols-4 gap-2 text-center">
-                            {[
-                              { label: "Confirmed", done: true },
-                              { label: "Packed", done: ["PACKED", "PICKED_UP", "SHIPPED", "IN_TRANSIT", "OUT_FOR_DELIVERY", "DELIVERED"].includes(order.shipmentStatus?.toUpperCase() || "") || ["CONFIRMED", "SHIPPED", "DELIVERED"].includes(order.status.toUpperCase()) },
-                              { label: "In Transit", done: ["IN_TRANSIT", "OUT_FOR_DELIVERY", "DELIVERED"].includes(order.shipmentStatus?.toUpperCase() || "") || ["SHIPPED", "DELIVERED"].includes(order.status.toUpperCase()) },
-                              { label: "Delivered", done: ["DELIVERED"].includes(order.shipmentStatus?.toUpperCase() || "") || order.status.toUpperCase() === "DELIVERED" },
-                            ].map((step, sIdx) => (
-                              <div key={sIdx} className="space-y-1">
-                                <div
-                                  className={cn(
-                                    "h-1.5 rounded-full transition-all duration-300",
-                                    step.done ? "bg-emerald-600" : "bg-muted"
-                                  )}
-                                />
+                      {/* Order Lifecycle Progress Stepper */}
+                      <div className="px-5 py-4 border-b border-border bg-background">
+                        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+                          Order Progress
+                        </p>
+                        <div className="grid grid-cols-4 gap-2 text-center">
+                          {[
+                            { label: "Order Placed", done: true, sub: order.date },
+                            { label: "Confirmed & Packed", done: isPacked, sub: isPacked ? "Ready" : "In Progress" },
+                            { label: "Shipped", done: isShipped, sub: order.courierName || "Courier Dispatch" },
+                            { label: "Delivered", done: isDelivered, sub: isDelivered ? "Delivered" : "Pending" },
+                          ].map((step, sIdx) => (
+                            <div key={sIdx} className="space-y-1.5">
+                              <div
+                                className={cn(
+                                  "h-2 rounded-full transition-all duration-300",
+                                  step.done ? "bg-emerald-600" : "bg-muted"
+                                )}
+                              />
+                              <div>
                                 <span className={cn(
-                                  "text-[10px] tracking-tight block",
-                                  step.done ? "font-semibold text-emerald-800 dark:text-emerald-400" : "text-muted-foreground"
+                                  "text-[11px] tracking-tight block leading-tight",
+                                  step.done ? "font-semibold text-foreground" : "text-muted-foreground"
                                 )}>
                                   {step.label}
                                 </span>
+                                <span className="text-[10px] text-muted-foreground block font-mono">
+                                  {step.sub}
+                                </span>
                               </div>
-                            ))}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Order Items */}
+                      <div className="p-5 divide-y divide-border/60">
+                        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground pb-2">
+                          Garments Ordered
+                        </p>
+                        {order.items.map((item, idx) => (
+                          <div key={idx} className="py-3 flex items-center justify-between text-xs">
+                            <div>
+                              <p className="font-semibold text-foreground">{item.name}</p>
+                              <p className="text-[11px] text-muted-foreground mt-0.5">
+                                Size: {item.size} · Color: {item.color} · Qty: {item.quantity}
+                              </p>
+                            </div>
+                            <span className="font-semibold text-foreground">{formatINR(item.price * item.quantity)}</span>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Delivery Address & Payment Breakdown Details */}
+                      <div className="p-5 border-t border-border bg-[#FAF8F5]/60 grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                        {/* Delivery Address */}
+                        <div className="space-y-1.5">
+                          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                            <MapPin className="h-3.5 w-3.5 text-primary" /> Delivery Address
+                          </p>
+                          <p className="font-semibold text-foreground">{order.address?.fullName || liveUser?.name || "Customer"}</p>
+                          <p className="text-muted-foreground text-[11px] leading-relaxed">
+                            {order.address?.line1 || "Kamala Mills, Mumbai (400013)"}
+                          </p>
+                          {order.address?.phone && (
+                            <p className="text-[11px] text-muted-foreground font-mono">
+                              Phone: <strong className="text-foreground">{order.address.phone}</strong>
+                            </p>
+                          )}
+                        </div>
+
+                        {/* Payment & Financial Summary */}
+                        <div className="space-y-1.5 sm:border-l sm:border-border sm:pl-4">
+                          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                            <CreditCard className="h-3.5 w-3.5 text-primary" /> Payment Summary
+                          </p>
+                          <div className="space-y-1 text-[11px]">
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">Payment Method:</span>
+                              <strong className="text-foreground">{order.paymentMethod}</strong>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">Delivery Charges:</span>
+                              <strong className="text-emerald-700">Complimentary</strong>
+                            </div>
+                            <div className="flex justify-between pt-1 border-t border-border/60 text-xs">
+                              <span className="font-semibold text-foreground">Total Paid / Payable:</span>
+                              <strong className="font-display font-semibold text-foreground">{formatINR(order.total)}</strong>
+                            </div>
                           </div>
                         </div>
                       </div>
-                    ) : (
-                      <div className="px-5 py-2.5 bg-secondary/15 border-t border-border flex items-center justify-between text-[11px] text-muted-foreground">
-                        <span className="flex items-center gap-1.5">
-                          <Package className="h-3.5 w-3.5 text-muted-foreground" />
-                          <span>Status: Processing dispatch with courier partner</span>
-                        </span>
-                      </div>
-                    )}
-
-                    <div className="px-5 py-3 bg-secondary/30 border-t border-border flex items-center justify-between text-[11px] text-muted-foreground">
-                      <span>Paid via {order.paymentMethod}</span>
-                      <span>Estimated Arrival: {order.deliveryDate}</span>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
@@ -913,34 +1178,18 @@ export function AccountPage() {
                       className="w-full h-10 border border-border px-3 rounded-sm bg-background"
                     />
                   </div>
-                  <div>
-                    <label className="text-[11px] font-semibold text-muted-foreground block mb-1">City *</label>
-                    <input
-                      type="text"
-                      required
-                      value={newAddr.city}
-                      onChange={(e) => setNewAddr({ ...newAddr, city: e.target.value })}
-                      className="w-full h-10 border border-border px-3 rounded-sm bg-background"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[11px] font-semibold text-muted-foreground block mb-1">State *</label>
-                    <input
-                      type="text"
-                      required
-                      value={newAddr.state}
-                      onChange={(e) => setNewAddr({ ...newAddr, state: e.target.value })}
-                      className="w-full h-10 border border-border px-3 rounded-sm bg-background"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[11px] font-semibold text-muted-foreground block mb-1">PIN Code *</label>
-                    <input
-                      type="text"
-                      required
-                      value={newAddr.pincode}
-                      onChange={(e) => setNewAddr({ ...newAddr, pincode: e.target.value })}
-                      className="w-full h-10 border border-border px-3 rounded-sm bg-background font-mono"
+                  <div className="sm:col-span-2">
+                    <StorefrontLocationSelector
+                      country={newAddr.country || "India"}
+                      state={newAddr.state || ""}
+                      city={newAddr.city || ""}
+                      pincode={newAddr.pincode || ""}
+                      onCountryChange={(country) => setNewAddr((prev) => ({ ...prev, country }))}
+                      onStateChange={(state) => setNewAddr((prev) => ({ ...prev, state }))}
+                      onCityChange={(city) => setNewAddr((prev) => ({ ...prev, city }))}
+                      onPincodeChange={(pincode) => setNewAddr((prev) => ({ ...prev, pincode }))}
+                      showCountry={false}
+                      showPincode={true}
                     />
                   </div>
                 </div>
