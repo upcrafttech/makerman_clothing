@@ -93,6 +93,8 @@ export interface ApiWishlist {
 export interface ApiOrderItem {
   productId: string;
   variantUuid: string | null;
+  sizeLabel?: string | null;
+  colorName?: string | null;
   quantity: number;
   price: number;
 }
@@ -101,6 +103,9 @@ export interface ApiOrderItemDTO {
   id?: string;
   productId: string;
   productName?: string;
+  variantUuid?: string | null;
+  sizeLabel?: string | null;
+  colorName?: string | null;
   quantity: number;
   price: number;
 }

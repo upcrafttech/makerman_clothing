@@ -1,10 +1,12 @@
 import { Link } from "@tanstack/react-router";
 import { Heart, Plus } from "lucide-react";
+import { useState, useMemo } from "react";
 
 import { Price, Rating, Tag } from "@/components/ui-kit/primitives";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useShop } from "@/lib/shop-store";
 import { cn } from "@/lib/utils";
+import { getImagesForColor } from "@/lib/product-images";
 import type { Product } from "@/types";
 
 export function ProductCard({
@@ -20,20 +22,23 @@ export function ProductCard({
 }) {
   const { toggleWishlist, isWishlisted, setQuickView } = useShop();
   const wished = isWishlisted(product.slug);
-  const hoverImage = product.images[1] ?? product.images[0]!;
+  const [activeColor, setActiveColor] = useState(product.colors[0]?.name ?? "");
+  const cardImages = useMemo(() => getImagesForColor(product, activeColor), [product, activeColor]);
+  const mainImage = cardImages[0] ?? product.images[0]!;
+  const hoverImage = cardImages[1] ?? product.images[1] ?? mainImage;
 
   return (
     <article className={cn("group relative flex min-w-0 flex-col", className)}>
       <div className="relative overflow-hidden bg-secondary">
         <Link
-          to="/product/$slug"
-          params={{ slug: product.slug }}
+          to="/product/$id"
+          params={{ id: product.id }}
           className="block"
           aria-label={`View ${product.name}`}
         >
           <div className="aspect-4/5 w-full">
             <img
-              src={product.images[0]}
+              src={mainImage}
               alt={product.name}
               width={800}
               height={1000}
@@ -63,14 +68,18 @@ export function ProductCard({
             e.stopPropagation();
             toggleWishlist(product.slug);
           }}
-          aria-label={wished ? `Remove ${product.name} from favorites` : `Add ${product.name} to favorites`}
+          aria-label={
+            wished ? `Remove ${product.name} from favorites` : `Add ${product.name} to favorites`
+          }
           aria-pressed={wished}
           className="absolute right-2 top-2 z-10 grid h-11 w-11 place-items-center rounded-full bg-background/70 backdrop-blur-xs text-foreground transition-all hover:bg-background hover:scale-105 active:scale-95"
         >
           <Heart
             className={cn(
               "h-[18px] w-[18px] transition-transform duration-200",
-              wished ? "scale-110 fill-amber-500 text-amber-500" : "text-foreground/80 hover:text-foreground",
+              wished
+                ? "scale-110 fill-amber-500 text-amber-500"
+                : "text-foreground/80 hover:text-foreground",
             )}
             strokeWidth={1.4}
           />
@@ -95,7 +104,7 @@ export function ProductCard({
       <div className="flex min-w-0 flex-1 flex-col gap-1.5 pt-3">
         <p className="eyebrow text-subtle">{product.categoryLabel}</p>
         <h3 className="text-sm font-medium leading-snug">
-          <Link to="/product/$slug" params={{ slug: product.slug }} className="link-underline">
+          <Link to="/product/$id" params={{ id: product.id }} className="link-underline">
             {product.name}
           </Link>
         </h3>
@@ -110,11 +119,23 @@ export function ProductCard({
         </div>
         <div className="flex items-center gap-1.5 pt-0.5">
           {product.colors.map((c) => (
-            <span
+            <button
               key={c.name}
+              type="button"
               title={c.name}
-              className="h-2.5 w-2.5 rounded-full border border-border"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setActiveColor(c.name);
+              }}
+              className={cn(
+                "h-2.5 w-2.5 rounded-full border transition-all cursor-pointer p-0",
+                activeColor === c.name
+                  ? "ring-1.5 ring-foreground scale-125 border-transparent"
+                  : "border-border hover:scale-110",
+              )}
               style={{ backgroundColor: c.hex }}
+              aria-label={`Select color ${c.name}`}
             />
           ))}
           <span className="ml-1 text-[0.6875rem] text-subtle">{product.colors.length} colours</span>

@@ -64,9 +64,8 @@ export type Article = {
 
 export type CartLine = {
   id: string;
-  productSlug: string;
-  size: string;
-  color: string;
+  productId: string;
+  variantId: string;
   quantity: number;
   savedForLater?: boolean | undefined;
 };

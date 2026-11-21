@@ -16,6 +16,7 @@ import { productService } from "@/services";
 import { authStore } from "@/lib/auth-store";
 import { apiFetch, BUSINESS_ID } from "@/lib/api-client";
 import { getRegisteredProduct, adaptCustomerAddress } from "@/lib/adapters";
+import { getVariantStock, getVariantById, getStockByVariantId } from "@/lib/product-stock";
 import type { Address, CartLine, Order, Product } from "@/types";
 import type { ApiCart, ApiWishlist, ApiCustomerAddress, ApiStoreProfile } from "@/types/api";
 
@@ -90,7 +91,7 @@ type ShopContextValue = {
   addresses: Address[];
   orders: Order[];
   session: Session;
-  addToCart: (productSlug: string, size: string, color: string, quantity?: number) => void;
+  addToCart: (productId: string, variantId: string, quantity?: number) => void;
   updateQuantity: (lineId: string, quantity: number) => void;
   removeLine: (lineId: string) => void;
   toggleSaveForLater: (lineId: string) => void;
@@ -217,18 +218,19 @@ export function ShopProvider({ children }: { children: ReactNode }) {
         const cartLines: CartLine[] = apiCart.items.map((item) => {
           const product =
             getRegisteredProduct(item.productId) ?? productService.bySlug(item.productId);
-          const slug = product?.slug ?? item.productId;
-          const defaultSize = product?.sizes?.[0] || "M";
-          const defaultColor = product?.colors?.[0]?.name || "Standard";
-          const lineId = `${slug}|${defaultSize}|${defaultColor}`;
+          const productId = product?.id ?? item.productId;
+          // Best-effort: pick first variant with matching quantity, or first variant
+          const variant =
+            product?.variants?.find((v) => v.quantity > 0) ?? product?.variants?.[0];
+          const variantId = variant?.id ?? "";
+          const lineId = `${productId}|${variantId}`;
 
           apiCartMap.current.set(lineId, item.id);
 
           return {
             id: lineId,
-            productSlug: slug,
-            size: defaultSize,
-            color: defaultColor,
+            productId,
+            variantId,
             quantity: item.quantity,
           };
         });
@@ -297,6 +299,12 @@ export function ShopProvider({ children }: { children: ReactNode }) {
           (o) => o && o.id && !o.id.startsWith("AVL2026"),
         );
       }
+      // Discard old slug-based cart lines (they have productSlug instead of productId)
+      if (Array.isArray(parsed.cart)) {
+        parsed.cart = parsed.cart.filter(
+          (line) => line.productId && !line.productSlug,
+        );
+      }
       const authUser = authStore.get();
       if (authUser && authStore.getToken()) {
         const parts = (authUser.name || "").split(" ");
@@ -334,7 +342,7 @@ export function ShopProvider({ children }: { children: ReactNode }) {
   }, [hydrated, syncFromBackend]);
 
   const addToCart = useCallback<ShopContextValue["addToCart"]>(
-    (productSlug, size, color, quantity = 1) => {
+    (productId, variantId, quantity = 1) => {
       const token = authStore.getToken();
       if (!token) {
         toast.info("Please sign in to add items to your shopping bag");
@@ -342,21 +350,30 @@ export function ShopProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      const product = getRegisteredProduct(productSlug) ?? productService.bySlug(productSlug);
+      const product = getRegisteredProduct(productId);
       if (!product) return;
-      const id = `${productSlug}|${size}|${color}`;
+
+      const availableStock = getStockByVariantId(product, variantId);
+      if (availableStock <= 0) {
+        return;
+      }
+
+      const lineId = `${productId}|${variantId}`;
+      const variant = getVariantById(product, variantId);
+      const displaySize = variant?.sizeLabel ?? "";
+      const displayColor = variant?.colorName ?? "";
 
       // 1. Optimistic Local State Update
       patch((prev) => {
-        const existing = prev.cart.find((l) => l.id === id && !l.savedForLater);
+        const existing = prev.cart.find((l) => l.id === lineId && !l.savedForLater);
         const cart = existing
-          ? prev.cart.map((l) => (l.id === id ? { ...l, quantity: l.quantity + quantity } : l))
-          : [...prev.cart, { id, productSlug, size, color, quantity }];
+          ? prev.cart.map((l) => (l.id === lineId ? { ...l, quantity: l.quantity + quantity } : l))
+          : [...prev.cart, { id: lineId, productId, variantId, quantity }];
         return { ...prev, cart };
       });
 
       toast.success("Added to bag", {
-        description: `${product.name} · ${size} · ${color}`,
+        description: `${product.name}${displaySize ? ` · ${displaySize}` : ""}${displayColor ? ` · ${displayColor}` : ""}`,
       });
       setCartOpen(true);
 
@@ -366,6 +383,7 @@ export function ShopProvider({ children }: { children: ReactNode }) {
         token,
         body: JSON.stringify({
           productId: product.id,
+          variantUuid: variantId || null,
           quantity,
           price: product.price,
         }),
@@ -374,7 +392,7 @@ export function ShopProvider({ children }: { children: ReactNode }) {
           if (res?.items) {
             const added = res.items.find((i) => i.productId === product.id);
             if (added) {
-              apiCartMap.current.set(id, added.id);
+              apiCartMap.current.set(lineId, added.id);
             }
           }
         })
@@ -549,12 +567,9 @@ export function ShopProvider({ children }: { children: ReactNode }) {
 
       const product = getRegisteredProduct(slug) ?? productService.bySlug(slug);
       if (!product) return;
-      addToCart(
-        slug,
-        product.sizes[Math.min(2, product.sizes.length - 1)] ?? "M",
-        product.colors[0]?.name ?? "Standard",
-        1,
-      );
+      const firstAvailableVariant =
+        product.variants?.find((v) => v.quantity > 0) ?? product.variants?.[0];
+      addToCart(product.id, firstAvailableVariant?.id ?? "", 1);
       toggleWishlist(slug);
     },
     [addToCart, toggleWishlist, navigate],
@@ -707,7 +722,7 @@ export function ShopProvider({ children }: { children: ReactNode }) {
   const value = useMemo<ShopContextValue>(() => {
     const active = state.cart.filter((l) => !l.savedForLater);
     const subtotal = active.reduce((sum, line) => {
-      const product = getRegisteredProduct(line.productSlug) ?? productService.bySlug(line.productSlug);
+      const product = getRegisteredProduct(line.productId);
       return sum + (product ? product.price * line.quantity : 0);
     }, 0);
 

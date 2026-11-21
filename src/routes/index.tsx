@@ -99,7 +99,8 @@ export function HomePage() {
     lookHotspots.forEach((item) => {
       const p = productService.bySlug(item.slug);
       if (p) {
-        addToCart(p.slug, p.sizes[0] ?? "M", p.colors[0]?.name ?? "Natural", 1);
+        const variantId = p.variants?.find((v) => v.quantity > 0)?.id ?? p.variants?.[0]?.id ?? "";
+        addToCart(p.id, variantId, 1);
         addedCount++;
       }
     });
@@ -109,7 +110,8 @@ export function HomePage() {
       });
     } else if (newArrivals[0]) {
       const first = newArrivals[0];
-      addToCart(first.slug, first.sizes[0] ?? "M", first.colors[0]?.name ?? "Natural", 1);
+      const variantId = first.variants?.find((v) => v.quantity > 0)?.id ?? first.variants?.[0]?.id ?? "";
+      addToCart(first.id, variantId, 1);
       toast.success("Garment added to your bag", {
         description: `${first.name} added to your shopping bag.`,
       });
@@ -565,8 +567,8 @@ export function HomePage() {
                         />
                         <div className="truncate">
                           <Link
-                            to="/product/$slug"
-                            params={{ slug: product.slug }}
+                            to="/product/$id"
+                            params={{ id: product.id }}
                             className="text-xs font-semibold text-foreground hover:underline truncate block"
                           >
                             {product.name}
@@ -581,7 +583,10 @@ export function HomePage() {
                         type="button"
                         size="sm"
                         variant="outline"
-                        onClick={() => addToCart(product.slug, product.sizes[0] ?? "M", product.colors[0]?.name ?? "Natural", 1)}
+                        onClick={() => {
+                          const variantId = product.variants?.find((v) => v.quantity > 0)?.id ?? product.variants?.[0]?.id ?? "";
+                          addToCart(product.id, variantId, 1);
+                        }}
                         className="h-9 px-3 text-[0.6875rem] font-semibold uppercase tracking-wider shrink-0"
                       >
                         <Plus className="h-3.5 w-3.5 mr-1" />
@@ -635,10 +640,10 @@ export function HomePage() {
             <div className="flex flex-col items-start text-left">
               <ShieldCheck className="h-5 w-5 text-amber-600 mb-2" strokeWidth={1.5} />
               <p className="text-xs font-semibold uppercase tracking-wider text-foreground">
-                Secure Payments
+                Secure Prepaid
               </p>
               <p className="text-[0.75rem] text-muted-foreground mt-1 leading-relaxed">
-                UPI, Cards, Net Banking & Cash on Delivery.
+                UPI, Cards & Net Banking via Razorpay.
               </p>
             </div>
 

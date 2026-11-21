@@ -120,13 +120,16 @@ export function CartDrawer() {
           ) : (
             <div className="divide-y divide-border/60">
               {activeLines.map((line) => {
-                const product = getRegisteredProduct(line.productSlug) ?? productService.bySlug(line.productSlug);
+                const product = getRegisteredProduct(line.productId) ?? productService.bySlug(line.productId);
                 if (!product) return null;
+                const variant = product.variants?.find((vr) => vr.id === line.variantId);
+                const displaySize = variant?.sizeLabel ?? "—";
+                const displayColor = variant?.colorName ?? "—";
                 return (
                   <div key={line.id} className="flex gap-4 py-4 first:pt-0 last:pb-0">
                     <Link
-                      to="/product/$slug"
-                      params={{ slug: product.slug }}
+                      to="/product/$id"
+                      params={{ id: product.id }}
                       onClick={() => setCartOpen(false)}
                       className="block h-24 w-18 shrink-0 overflow-hidden bg-secondary"
                     >
@@ -141,8 +144,8 @@ export function CartDrawer() {
                       <div>
                         <div className="flex items-start justify-between gap-2">
                           <Link
-                            to="/product/$slug"
-                            params={{ slug: product.slug }}
+                            to="/product/$id"
+                            params={{ id: product.id }}
                             onClick={() => setCartOpen(false)}
                             className="text-sm font-medium leading-snug line-clamp-1 hover:underline"
                           >
@@ -153,7 +156,7 @@ export function CartDrawer() {
                           </span>
                         </div>
                         <p className="mt-0.5 text-xs text-muted-foreground">
-                          {line.color} / {line.size}
+                          {displayColor} / {displaySize}
                         </p>
                       </div>
 
@@ -212,8 +215,10 @@ export function CartDrawer() {
               <h3 className="eyebrow text-subtle mb-3">Saved For Later ({savedLines.length})</h3>
               <div className="divide-y divide-border/40">
                 {savedLines.map((line) => {
-                  const product = getRegisteredProduct(line.productSlug) ?? productService.bySlug(line.productSlug);
+                  const product = getRegisteredProduct(line.productId) ?? productService.bySlug(line.productId);
                   if (!product) return null;
+                  const variant = product.variants?.find((vr) => vr.id === line.variantId);
+                  const displaySize = variant?.sizeLabel ?? "—";
                   return (
                     <div key={line.id} className="flex items-center justify-between py-2.5 text-xs">
                       <div className="flex items-center gap-2.5 min-w-0">
@@ -225,7 +230,7 @@ export function CartDrawer() {
                         <div className="truncate">
                           <p className="font-medium truncate">{product.name}</p>
                           <p className="text-[11px] text-muted-foreground">
-                            {line.size} · {formatINR(product.price)}
+                            {displaySize} · {formatINR(product.price)}
                           </p>
                         </div>
                       </div>

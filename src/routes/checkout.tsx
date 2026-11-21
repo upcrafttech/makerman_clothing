@@ -35,6 +35,7 @@ import {
 import { StorefrontLocationSelector } from "@/components/common/storefront-location-selector";
 import { authStore } from "@/lib/auth-store";
 import { getRegisteredProduct } from "@/lib/adapters";
+import { getVariantStock, getStockByVariantId } from "@/lib/product-stock";
 import { openRazorpayCheckout } from "@/lib/razorpay";
 import type { Address, Order } from "@/types";
 
@@ -61,18 +62,12 @@ export function CheckoutPage() {
   const [step, setStep] = useState<2 | 3 | 4>(2);
   const [selectedAddressId, setSelectedAddressId] = useState<string>("new");
   const [shippingMethod, setShippingMethod] = useState<"standard" | "express">("standard");
-  const [paymentMethod, setPaymentMethod] = useState<"upi" | "card" | "netbanking" | "cod">("upi");
+  const [paymentMethod, setPaymentMethod] = useState<"upi" | "card" | "netbanking">("upi");
   const [confirmedOrder, setConfirmedOrder] = useState<Order | null>(null);
   const [saveAddressToAccount, setSaveAddressToAccount] = useState(true);
   const [isSavingAddress, setIsSavingAddress] = useState(false);
   const { data: paymentConfig, isLoading: paymentConfigLoading } = usePaymentConfig();
-  const onlinePaymentEnabled = paymentConfig?.onlinePaymentEnabled ?? false;
-
-  useEffect(() => {
-    if (!paymentConfigLoading && !onlinePaymentEnabled && paymentMethod !== "cod") {
-      setPaymentMethod("cod");
-    }
-  }, [paymentConfigLoading, onlinePaymentEnabled, paymentMethod]);
+  const onlinePaymentEnabled = paymentConfig?.onlinePaymentEnabled ?? true;
 
   useEffect(() => {
     if (availableAddresses.length > 0 && selectedAddressId === "new") {
@@ -265,18 +260,33 @@ export function CheckoutPage() {
   const { data: _catalog } = useProducts();
   const [isPlacing, setIsPlacing] = useState(false);
 
+  const outOfStockItems = activeLines.filter((line) => {
+    const p = getRegisteredProduct(line.productId) ?? productService.bySlug(line.productId);
+    return p && getStockByVariantId(p, line.variantId) < line.quantity;
+  });
+  const hasOutOfStockItems = outOfStockItems.length > 0;
+
   const handlePlaceOrder = async () => {
     setIsPlacing(true);
 
+    if (hasOutOfStockItems) {
+      toast.error(
+        "Some items in your bag are currently out of stock. Please update your bag to proceed.",
+      );
+      setIsPlacing(false);
+      return;
+    }
+
     const items = activeLines
       .map((line) => {
-        const p = getRegisteredProduct(line.productSlug) ?? productService.bySlug(line.productSlug);
+        const p = getRegisteredProduct(line.productId) ?? productService.bySlug(line.productId);
         if (!p) return null;
+        const v = p.variants?.find((vr) => vr.id === line.variantId);
         return {
           productSlug: p.slug,
           name: p.name,
-          size: line.size,
-          color: line.color,
+          size: v?.sizeLabel ?? "—",
+          color: v?.colorName ?? "—",
           quantity: line.quantity,
           price: p.price,
         };
@@ -289,9 +299,8 @@ export function CheckoutPage() {
       return;
     }
 
-    if (!onlinePaymentEnabled && paymentMethod !== "cod") {
-      toast.error("Online payment is currently disabled. Please select Cash on Delivery.");
-      setPaymentMethod("cod");
+    if (!onlinePaymentEnabled) {
+      toast.error("Online payment gateway is temporarily unavailable. Please try again shortly.");
       setIsPlacing(false);
       return;
     }
@@ -321,16 +330,15 @@ export function CheckoutPage() {
 
     const apiItems = activeLines
       .map((line) => {
-        const p = getRegisteredProduct(line.productSlug) ?? productService.bySlug(line.productSlug);
+        const p = getRegisteredProduct(line.productId) ?? productService.bySlug(line.productId);
         if (!p) return null;
-        const variant = p.variants?.find(
-          (v) =>
-            v.sizeLabel.toLowerCase() === line.size.toLowerCase() ||
-            v.colorName.toLowerCase() === line.color.toLowerCase(),
-        );
+        // Resolve variant strictly by UUID — no string label matching needed
+        const variant = p.variants?.find((v) => v.id === line.variantId) ?? null;
         return {
           productId: p.id,
           variantUuid: variant?.id ?? null,
+          sizeLabel: variant?.sizeLabel ?? null,
+          colorName: variant?.colorName ?? null,
           quantity: line.quantity,
           price: p.price,
         };
@@ -385,7 +393,7 @@ export function CheckoutPage() {
       state: currentAddress.state.trim(),
       country: currentAddress.country || newAddress.country || "India",
       pincode: cleanPincode,
-      paymentMethod: paymentMethod === "cod" ? "COD" : "ONLINE",
+      paymentMethod: "ONLINE",
       saveAddress: saveAddressToAccount,
       savedAddressId: selectedSavedAddress && !selectedSavedAddress.id.startsWith("addr-") ? selectedSavedAddress.id : undefined,
     };
@@ -404,12 +412,6 @@ export function CheckoutPage() {
     if (!platformOrderId) {
       toast.error("Server did not return a valid order ID");
       setIsPlacing(false);
-      return;
-    }
-
-    // COD flow
-    if (paymentMethod === "cod") {
-      completeOrderSuccess(platformOrderId, "Cash on Delivery");
       return;
     }
 
@@ -464,7 +466,7 @@ export function CheckoutPage() {
         modal: {
           ondismiss: () => {
             setIsPlacing(false);
-            toast.info("Payment cancelled. You can retry or choose Cash on Delivery.");
+            toast.info("Payment cancelled. You can retry when ready.");
           },
         },
       });
@@ -472,13 +474,7 @@ export function CheckoutPage() {
       setIsPlacing(false);
       const msg = (err as Error)?.message || "";
       console.error("Razorpay order initiation error:", msg);
-      if (msg.includes("not configured") || msg.includes("disabled")) {
-        toast.error("Online payment gateway is not configured or disabled by store admin.", {
-          description: "Please choose Cash on Delivery to complete your purchase.",
-        });
-      } else {
-        toast.error("Online payment gateway error: " + msg);
-      }
+      toast.error("Online payment error: " + (msg || "Unable to initiate transaction. Please try again."));
     }
   };
 
@@ -842,20 +838,18 @@ export function CheckoutPage() {
               {step === 3 && (
                 <div className="space-y-6">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {!paymentConfigLoading && !onlinePaymentEnabled && (
-                      <div className="sm:col-span-2 p-3 bg-amber-500/10 border border-amber-500/20 rounded-sm text-xs text-amber-900 dark:text-amber-200 flex items-start gap-2.5">
-                        <Package className="h-4 w-4 shrink-0 mt-0.5 text-amber-600" />
-                        <div>
-                          <p className="font-semibold text-foreground">Online Payment Currently Unavailable</p>
-                          <p className="text-muted-foreground text-[11px] mt-0.5">
-                            Online payment is currently disabled by the store. Cash on Delivery is the only available payment option.
-                          </p>
-                        </div>
+                    <div className="sm:col-span-2 p-3 bg-[#FAF8F5] border border-border/80 rounded-sm text-xs text-muted-foreground flex items-start gap-2.5">
+                      <ShieldCheck className="h-4 w-4 shrink-0 mt-0.5 text-amber-600" />
+                      <div>
+                        <p className="font-semibold text-foreground">100% Prepaid Orders</p>
+                        <p className="text-[11px] mt-0.5">
+                          We exclusively accept secure prepaid payments via Razorpay (UPI, Credit/Debit Cards, Net Banking).
+                        </p>
                       </div>
-                    )}
+                    </div>
 
                     {paymentConfigLoading &&
-                      [1, 2, 3, 4].map((i) => (
+                      [1, 2, 3].map((i) => (
                         <div key={i} className="p-4 border border-border rounded-sm animate-pulse bg-secondary/40 h-20" />
                       ))}
 
@@ -864,8 +858,7 @@ export function CheckoutPage() {
                       { id: "upi", title: "UPI / QR Code", desc: "Google Pay, PhonePe, Paytm, BHIM", icon: QrCode },
                       { id: "card", title: "Credit / Debit Card", desc: "Visa, Mastercard, RuPay, Amex", icon: CreditCard },
                       { id: "netbanking", title: "Net Banking", desc: "HDFC, ICICI, SBI, Axis, Kotak", icon: Wallet },
-                      { id: "cod", title: "Cash on Delivery", desc: "Pay cash upon doorstep verification", icon: Package },
-                    ].filter((method) => method.id === "cod" || onlinePaymentEnabled).map((method) => (
+                    ].map((method) => (
                       <label
                         key={method.id}
                         onClick={() => setPaymentMethod(method.id as typeof paymentMethod)}
@@ -927,15 +920,20 @@ export function CheckoutPage() {
                   )}
 
                   <Button
-                    disabled={isPlacing || paymentConfigLoading}
+                    disabled={isPlacing || paymentConfigLoading || hasOutOfStockItems}
                     onClick={handlePlaceOrder}
-                    className="w-full h-13 text-xs font-semibold uppercase tracking-[0.14em] bg-ink text-ink-foreground hover:bg-ink/90 rounded-sm shadow-md"
+                    className={cn(
+                      "w-full h-13 text-xs font-semibold uppercase tracking-[0.14em] rounded-sm shadow-md transition-all",
+                      hasOutOfStockItems
+                        ? "bg-rose-700 text-white cursor-not-allowed hover:bg-rose-700"
+                        : "bg-ink text-ink-foreground hover:bg-ink/90",
+                    )}
                   >
                     {isPlacing
                       ? "Securing Garments..."
-                      : paymentMethod === "cod"
-                      ? `Confirm Cash on Delivery — ${formatINR(finalTotal)}`
-                      : `Pay Online via Razorpay — ${formatINR(finalTotal)}`}
+                      : hasOutOfStockItems
+                        ? "Item Out of Stock — Please Update Bag"
+                        : `Pay Online via Razorpay — ${formatINR(finalTotal)}`}
                   </Button>
                 </div>
               )}
@@ -952,8 +950,13 @@ export function CheckoutPage() {
               <div className="divide-y divide-border/60 max-h-60 overflow-y-auto pr-1">
                 {activeLines.map((line) => {
                   const product =
-                    getRegisteredProduct(line.productSlug) ?? productService.bySlug(line.productSlug);
+                    getRegisteredProduct(line.productId) ?? productService.bySlug(line.productId);
                   if (!product) return null;
+                  const variant = product.variants?.find((vr) => vr.id === line.variantId);
+                  const displaySize = variant?.sizeLabel ?? "—";
+                  const displayColor = variant?.colorName ?? "—";
+                  const available = getStockByVariantId(product, line.variantId);
+                  const isInsufficient = available < line.quantity;
 
                   return (
                     <div key={line.id} className="py-2.5 flex items-center justify-between text-xs">
@@ -962,8 +965,13 @@ export function CheckoutPage() {
                         <div className="truncate">
                           <p className="font-medium text-foreground truncate">{product.name}</p>
                           <p className="text-[11px] text-muted-foreground">
-                            {line.size} · {line.color} · Qty {line.quantity}
+                            {displaySize} · {displayColor} · Qty {line.quantity}
                           </p>
+                          {isInsufficient && (
+                            <p className="text-[10px] text-rose-600 font-semibold mt-0.5">
+                              Out of stock ({available} in stock)
+                            </p>
+                          )}
                         </div>
                       </div>
                       <span className="font-semibold text-foreground shrink-0">{formatINR(product.price * line.quantity)}</span>

@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { productService } from "@/services";
 import { useProducts } from "@/hooks/use-api";
 import { getRegisteredProduct } from "@/lib/adapters";
+import { getVariantStock, getStockByVariantId } from "@/lib/product-stock";
 
 export const Route = createFileRoute("/cart")({
   head: () => ({
@@ -38,6 +39,11 @@ export function CartPage() {
 
   const activeLines = cart.filter((l) => !l.savedForLater);
   const savedLines = cart.filter((l) => l.savedForLater);
+
+  const hasOutOfStockItems = activeLines.some((line) => {
+    const p = getRegisteredProduct(line.productId) ?? productService.bySlug(line.productId);
+    return p && getStockByVariantId(p, line.variantId) < line.quantity;
+  });
 
   const { shipping, tax, total } = cartTotals(subtotal, discountAmount);
   const amountNeeded = Math.max(FREE_SHIPPING_THRESHOLD - (subtotal - discountAmount), 0);
@@ -137,14 +143,17 @@ export function CartPage() {
               {/* Items List */}
               <div className="divide-y divide-border border-y border-border">
                 {activeLines.map((line) => {
-                  const product = getRegisteredProduct(line.productSlug) ?? productService.bySlug(line.productSlug);
+                  const product = getRegisteredProduct(line.productId) ?? productService.bySlug(line.productId);
                   if (!product) return null;
+                  const variant = product.variants?.find((vr) => vr.id === line.variantId);
+                  const displaySize = variant?.sizeLabel ?? "—";
+                  const displayColor = variant?.colorName ?? "—";
 
                   return (
                     <div key={line.id} className="py-6 flex gap-4 sm:gap-6">
                       <Link
-                        to="/product/$slug"
-                        params={{ slug: product.slug }}
+                        to="/product/$id"
+                        params={{ id: product.id }}
                         className="h-28 w-20 sm:h-36 sm:w-28 shrink-0 overflow-hidden bg-secondary rounded-xs"
                       >
                         <img
@@ -162,13 +171,24 @@ export function CartPage() {
                                 {product.categoryLabel}
                               </p>
                               <h3 className="font-medium text-sm sm:text-base text-foreground mt-0.5">
-                                <Link to="/product/$slug" params={{ slug: product.slug }} className="hover:underline">
+                                <Link to="/product/$id" params={{ id: product.id }} className="hover:underline">
                                   {product.name}
                                 </Link>
                               </h3>
                               <p className="text-xs text-muted-foreground mt-1">
-                                Size: <span className="font-medium text-foreground">{line.size}</span> · Color: <span className="font-medium text-foreground">{line.color}</span>
+                                Size: <span className="font-medium text-foreground">{displaySize}</span> · Color: <span className="font-medium text-foreground">{displayColor}</span>
                               </p>
+                              {(() => {
+                                const stock = getStockByVariantId(product, line.variantId);
+                                if (stock < line.quantity) {
+                                  return (
+                                    <p className="text-xs text-rose-600 font-semibold mt-1">
+                                      Out of stock ({stock} in stock)
+                                    </p>
+                                  );
+                                }
+                                return null;
+                              })()}
                             </div>
 
                             <p className="font-display text-base font-semibold text-foreground text-right shrink-0">
@@ -230,8 +250,11 @@ export function CartPage() {
                   <h3 className="font-display text-lg font-normal mb-4">Saved For Later ({savedLines.length})</h3>
                   <div className="divide-y divide-border/60">
                     {savedLines.map((line) => {
-                      const product = getRegisteredProduct(line.productSlug) ?? productService.bySlug(line.productSlug);
+                      const product = getRegisteredProduct(line.productId) ?? productService.bySlug(line.productId);
                       if (!product) return null;
+                      const variant = product.variants?.find((vr) => vr.id === line.variantId);
+                      const displaySize = variant?.sizeLabel ?? "—";
+                      const displayColor = variant?.colorName ?? "—";
                       return (
                         <div key={line.id} className="py-3 flex items-center justify-between gap-4">
                           <div className="flex items-center gap-3">
@@ -239,7 +262,7 @@ export function CartPage() {
                             <div>
                               <p className="text-xs font-semibold">{product.name}</p>
                               <p className="text-[11px] text-muted-foreground">
-                                {line.size} · {line.color} · <span className="font-semibold text-foreground">{formatINR(product.price)}</span>
+                                {displaySize} · {displayColor} · <span className="font-semibold text-foreground">{formatINR(product.price)}</span>
                               </p>
                             </div>
                           </div>
@@ -326,15 +349,24 @@ export function CartPage() {
                   </div>
                 </div>
 
-                <Button
-                  asChild
-                  className="w-full h-13 text-xs font-semibold uppercase tracking-[0.14em] bg-ink text-ink-foreground hover:bg-ink/90 rounded-sm shadow-md"
-                >
-                  <Link to="/checkout" className="flex items-center justify-center gap-2">
-                    <span>Proceed to Checkout</span>
-                    <ArrowRight className="h-4 w-4" />
-                  </Link>
-                </Button>
+                {hasOutOfStockItems ? (
+                  <Button
+                    disabled
+                    className="w-full h-13 text-xs font-semibold uppercase tracking-[0.14em] bg-rose-700 text-white cursor-not-allowed rounded-sm shadow-md"
+                  >
+                    Item Out of Stock — Please Update Bag
+                  </Button>
+                ) : (
+                  <Button
+                    asChild
+                    className="w-full h-13 text-xs font-semibold uppercase tracking-[0.14em] bg-ink text-ink-foreground hover:bg-ink/90 rounded-sm shadow-md"
+                  >
+                    <Link to="/checkout" className="flex items-center justify-center gap-2">
+                      <span>Proceed to Checkout</span>
+                      <ArrowRight className="h-4 w-4" />
+                    </Link>
+                  </Button>
+                )}
 
                 <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground pt-1">
                   <ShieldCheck className="h-4 w-4 text-emerald-600" />
@@ -353,15 +385,24 @@ export function CartPage() {
             <p className="text-[0.6875rem] text-muted-foreground uppercase tracking-wider">Total Amount</p>
             <p className="font-display text-lg font-semibold text-foreground">{formatINR(total)}</p>
           </div>
-          <Button
-            asChild
-            className="flex-1 h-12 text-xs font-semibold uppercase tracking-wider bg-ink text-ink-foreground rounded-sm"
-          >
-            <Link to="/checkout" className="flex items-center justify-center gap-2">
-              <span>Checkout</span>
-              <ArrowRight className="h-4 w-4" />
-            </Link>
-          </Button>
+          {hasOutOfStockItems ? (
+            <Button
+              disabled
+              className="flex-1 h-12 text-xs font-semibold uppercase tracking-wider bg-rose-700 text-white rounded-sm cursor-not-allowed"
+            >
+              Item Out of Stock
+            </Button>
+          ) : (
+            <Button
+              asChild
+              className="flex-1 h-12 text-xs font-semibold uppercase tracking-wider bg-ink text-ink-foreground rounded-sm"
+            >
+              <Link to="/checkout" className="flex items-center justify-center gap-2">
+                <span>Checkout</span>
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </Button>
+          )}
         </div>
       )}
     </div>

@@ -1,5 +1,5 @@
 import type { ApiProduct, ApiCustomerAddress } from "@/types/api";
-import type { Product, ColorOption, Address } from "@/types";
+import type { Product, ColorOption, Address, ProductImageItem } from "@/types";
 
 // Runtime registry of live adapted products
 const productRegistry = new Map<string, Product>();
@@ -41,33 +41,91 @@ export function getAllRegisteredProducts(): Product[] {
   return list;
 }
 
+const KNOWN_COLOR_NAMES: Record<string, string> = {
+  "#ffffff": "White",
+  "#faf7f2": "Off White",
+  "#000000": "Black",
+  "#0f172a": "Navy Blue",
+  "#94a3b8": "Heather Grey",
+  "#556b2f": "Olive Green",
+  "#dc2626": "Crimson Red",
+  "#2563eb": "Royal Blue",
+  "#d4b896": "Beige",
+  "#36454f": "Charcoal",
+};
+
+export function resolveColorName(
+  name?: string | null,
+  hex?: string | null,
+): { name: string; hex: string } | null {
+  let cleanName = name?.trim() || "";
+  let cleanHex = hex?.trim() || "";
+
+  if (cleanName.startsWith("#") && !cleanHex) {
+    cleanHex = cleanName;
+    cleanName = "";
+  }
+
+  if (!cleanName && !cleanHex) return null;
+  if (cleanName.toLowerCase() === "general") return null;
+
+  if (cleanHex && !cleanHex.startsWith("#")) {
+    cleanHex = `#${cleanHex}`;
+  }
+
+  if (!cleanName || cleanName.startsWith("#")) {
+    const matched = KNOWN_COLOR_NAMES[cleanHex.toLowerCase()];
+    cleanName = matched || cleanHex;
+  }
+
+  return {
+    name: cleanName,
+    hex: cleanHex || "#1a1a1a",
+  };
+}
+
 export function adaptProduct(api: ApiProduct): Product {
   const rawVariants = api.variants ?? [];
 
-  const sizes = Array.from(
-    new Set(rawVariants.map((v) => v.sizeLabel).filter(Boolean)),
-  );
+  const sizes = Array.from(new Set(rawVariants.map((v) => v.sizeLabel).filter(Boolean)));
 
   const meta = (key: string) =>
     api.metafields?.find((m) => m.key.toLowerCase() === key.toLowerCase())?.value;
 
-  const colorMap: Record<string, ColorOption> = {};
+  const colorMap = new Map<string, ColorOption>();
+
+  const registerColor = (rawName?: string | null, rawHex?: string | null) => {
+    const resolved = resolveColorName(rawName, rawHex);
+    if (!resolved) return;
+
+    const hexKey = resolved.hex.toLowerCase();
+    const nameKey = resolved.name.toLowerCase();
+
+    let foundKey: string | undefined;
+    for (const [key, existing] of colorMap.entries()) {
+      if (
+        (hexKey && existing.hex.toLowerCase() === hexKey) ||
+        (nameKey && existing.name.toLowerCase() === nameKey)
+      ) {
+        foundKey = key;
+        break;
+      }
+    }
+
+    if (foundKey) {
+      const existing = colorMap.get(foundKey)!;
+      if (existing.name.startsWith("#") && !resolved.name.startsWith("#")) {
+        existing.name = resolved.name;
+      }
+      return;
+    }
+
+    colorMap.set(nameKey, resolved);
+  };
 
   // 1. Extract from variants
   for (const v of rawVariants) {
-    const rawName = v.colorName?.trim();
-    const rawCode = v.colorCode?.trim();
-    if (rawName && !colorMap[rawName.toLowerCase()]) {
-      colorMap[rawName.toLowerCase()] = {
-        name: rawName,
-        hex: rawCode || "#1a1a1a",
-      };
-    } else if (rawCode && !colorMap[rawCode.toLowerCase()]) {
-      colorMap[rawCode.toLowerCase()] = {
-        name: rawCode,
-        hex: rawCode,
-      };
-    }
+    registerColor(v.colorName, v.colorCode);
   }
 
   // 2. Extract from metafields (colors, color, Color)
@@ -78,46 +136,84 @@ export function adaptProduct(api: ApiProduct): Product {
       if (Array.isArray(parsed)) {
         for (const item of parsed) {
           if (typeof item === "string" && item.trim()) {
-            const val = item.trim();
-            const hex = val.startsWith("#") ? val : "#1a1a1a";
-            if (!colorMap[val.toLowerCase()]) {
-              colorMap[val.toLowerCase()] = { name: val, hex };
-            }
+            registerColor(item.trim(), null);
           } else if (item && typeof item === "object") {
-            const name = (item.name || item.colorName || item.label || item.hex || "Color").trim();
-            const hex = (item.hex || item.colorCode || item.code || "#1a1a1a").trim();
-            if (name && !colorMap[name.toLowerCase()]) {
-              colorMap[name.toLowerCase()] = { name, hex };
-            }
+            registerColor(
+              item.name || item.colorName || item.label,
+              item.hex || item.colorCode || item.code,
+            );
           }
         }
       }
     } catch {
-      const parts = colorsMeta.split(",").map((s) => s.trim()).filter(Boolean);
+      const parts = colorsMeta
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
       for (const p of parts) {
-        if (!colorMap[p.toLowerCase()]) {
-          colorMap[p.toLowerCase()] = {
-            name: p,
-            hex: p.startsWith("#") ? p : "#1a1a1a",
-          };
-        }
+        registerColor(p, null);
       }
     }
   }
 
-  const colors = Object.values(colorMap);
+  const rawApiImages: any[] =
+    Array.isArray(api.images) && api.images.length > 0
+      ? api.images
+      : Array.isArray(api.imageUrls) && api.imageUrls.length > 0
+        ? api.imageUrls
+        : api.imageUrl
+          ? [api.imageUrl]
+          : [];
 
-  const images = [
-    ...(api.imageUrls?.filter(Boolean) ?? []),
-    ...(api.imageUrl && !api.imageUrls?.includes(api.imageUrl) ? [api.imageUrl] : []),
-  ].filter(Boolean);
+  const productImages: ProductImageItem[] = rawApiImages
+    .map((img: any, idx: number) => {
+      if (typeof img === "string") {
+        return {
+          url: img.trim(),
+          colorName: null,
+          colorCode: null,
+          sortOrder: idx,
+        };
+      }
+      if (img && typeof img === "object") {
+        return {
+          url: (img.url || img.imageUrl || "").trim(),
+          colorName: img.colorName?.trim() || null,
+          colorCode: img.colorCode?.trim() || null,
+          sortOrder: typeof img.sortOrder === "number" ? img.sortOrder : idx,
+        };
+      }
+      return null;
+    })
+    .filter((img): img is ProductImageItem => Boolean(img && img.url));
+
+  // 3. Extract from productImages if any (skipping general)
+  for (const img of productImages) {
+    if (img.colorName && img.colorName.trim().toLowerCase() !== "general") {
+      registerColor(img.colorName, img.colorCode);
+    }
+  }
+
+  const colors = Array.from(colorMap.values());
+
+  const images =
+    productImages.length > 0
+      ? productImages.map((img) => img.url)
+      : [
+          ...(api.imageUrls?.filter(Boolean) ?? []),
+          ...(api.imageUrl && !api.imageUrls?.includes(api.imageUrl) ? [api.imageUrl] : []),
+        ].filter(Boolean);
 
   // If no images exist from backend, provide refined image fallback
   if (images.length === 0) {
     const nameLower = api.name.toLowerCase();
     if (nameLower.includes("shirt") || nameLower.includes("kurta")) {
       images.push("/images/p-shirt-1.jpg", "/images/look-1.jpg");
-    } else if (nameLower.includes("pant") || nameLower.includes("trouser") || nameLower.includes("jean")) {
+    } else if (
+      nameLower.includes("pant") ||
+      nameLower.includes("trouser") ||
+      nameLower.includes("jean")
+    ) {
       images.push("/images/p-trousers-1.jpg", "/images/p-jeans-1.jpg");
     } else if (nameLower.includes("tshirt") || nameLower.includes("tee")) {
       images.push("/images/p-tshirt-1.jpg");
@@ -138,17 +234,15 @@ export function adaptProduct(api: ApiProduct): Product {
   const gender: Product["gender"] =
     genderRaw === "men" || genderRaw === "women" ? genderRaw : "unisex";
 
-  const daysOld =
-    (Date.now() - new Date(api.createdAt || Date.now()).getTime()) / 86_400_000;
-  const isNewArrival =
-    meta("isNewArrival") === "true" ||
-    meta("newArrival") === "true";
-  const isFeatured =
-    meta("isFeatured") === "true" ||
-    meta("featured") === "true";
+  const daysOld = (Date.now() - new Date(api.createdAt || Date.now()).getTime()) / 86_400_000;
+  const isNewArrival = meta("isNewArrival") === "true" || meta("newArrival") === "true";
+  const isFeatured = meta("isFeatured") === "true" || meta("featured") === "true";
 
   const rawCollections =
-    meta("collections")?.split(",").map((c) => c.trim()).filter(Boolean) ?? [];
+    meta("collections")
+      ?.split(",")
+      .map((c) => c.trim())
+      .filter(Boolean) ?? [];
   if (isNewArrival && !rawCollections.includes("new-arrivals")) {
     rawCollections.push("new-arrivals");
   }
@@ -177,12 +271,14 @@ export function adaptProduct(api: ApiProduct): Product {
     description: api.description ?? "",
     material: meta("material") ?? "Premium Craft Fabric",
     fit: meta("fit") ?? "Tailored Regular Fit",
-    care: meta("care")?.split("|").map((c) => c.trim()).filter(Boolean) ?? [
-      "Dry clean or cold wash",
-      "Do not bleach",
-      "Warm iron inside out",
-    ],
-    details: meta("details")?.split("|").map((d) => d.trim()).filter(Boolean) ?? [
+    care: meta("care")
+      ?.split("|")
+      .map((c) => c.trim())
+      .filter(Boolean) ?? ["Dry clean or cold wash", "Do not bleach", "Warm iron inside out"],
+    details: meta("details")
+      ?.split("|")
+      .map((d) => d.trim())
+      .filter(Boolean) ?? [
       "Designed and crafted by Makerman",
       "Reinforced seams for lasting durability",
       "Breathable high-density weave",
@@ -192,10 +288,15 @@ export function adaptProduct(api: ApiProduct): Product {
     rating: Number(api.averageRating ?? 5.0),
     reviewCount: Number(api.reviewCount ?? 0),
     images,
+    productImages: productImages.length > 0 ? productImages : undefined,
     badge,
     inStock: api.stock > 0,
     stockCount: api.stock ?? 0,
-    tags: meta("tags")?.split(",").map((t) => t.trim()).filter(Boolean) ?? [],
+    tags:
+      meta("tags")
+        ?.split(",")
+        .map((t) => t.trim())
+        .filter(Boolean) ?? [],
     createdAt: api.createdAt || new Date().toISOString(),
     variants: rawVariants,
   };
@@ -220,4 +321,3 @@ export function adaptCustomerAddress(api: ApiCustomerAddress): Address {
     isDefault: Boolean(api.isDefault),
   };
 }
-

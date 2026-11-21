@@ -148,7 +148,7 @@ export const deliveryService = {
       ok: true as const,
       days,
       date: date.toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" }),
-      cod: !pincode.startsWith("19"),
+      cod: false,
     };
   },
 };

@@ -457,7 +457,7 @@ export const seedOrders: Order[] = [
     date: "2026-05-03",
     status: "Delivered",
     deliveryDate: "2026-05-07",
-    paymentMethod: "Cash on Delivery",
+    paymentMethod: "UPI",
     address: seedOrderAddress,
     items: [
       {
@@ -518,9 +518,9 @@ export const faqs: { category: string; items: { q: string; a: string }[] }[] = [
   {
     category: "Payments",
     items: [
-      { q: "Which payment methods do you accept?", a: "UPI (Google Pay, PhonePe, Paytm), credit and debit cards, net banking, and cash on delivery." },
-      { q: "Is cash on delivery available everywhere?", a: "COD is available on orders up to ₹10,000 across most serviceable PIN codes." },
-      { q: "Do you store card details?", a: "No. Payments are handled by our payment partner and card details never reach our servers." },
+      { q: "Which payment methods do you accept?", a: "UPI (Google Pay, PhonePe, Paytm, BHIM), all major credit and debit cards, and net banking via secure Razorpay checkout." },
+      { q: "Is Cash on Delivery available?", a: "We exclusively accept 100% secure prepaid online payments to ensure swift, contactless processing and priority dispatch." },
+      { q: "Do you store card details?", a: "No. Payments are handled by our RBI-compliant payment gateway partner (Razorpay) and card details never touch our servers." },
     ],
   },
   {

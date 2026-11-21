@@ -185,9 +185,9 @@ export function SearchModal() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {results.slice(0, 8).map((product) => (
                   <Link
-                    key={product.slug}
-                    to="/product/$slug"
-                    params={{ slug: product.slug }}
+                    key={product.id}
+                    to="/product/$id"
+                    params={{ id: product.id }}
                     onClick={() => setSearchOpen(false)}
                     className="flex gap-3 p-2 border border-border/60 hover:border-foreground/40 bg-secondary/20 hover:bg-secondary/50 transition-colors"
                   >

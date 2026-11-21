@@ -41,6 +41,8 @@ import {
   useRegister,
   useVerifyOtp,
   useResendOtp,
+  useForgotPassword,
+  useResetPassword,
   useGoogleLogin,
   useGoogleRegister,
   useOrders,
@@ -78,19 +80,26 @@ export function AccountPage() {
   } = useShop();
 
   const [activeTab, setActiveTab] = useState<"overview" | "orders" | "addresses" | "profile" | "favorites">("overview");
-  const [authMode, setAuthMode] = useState<"login" | "register" | "otp" | "google-profile">("login");
+  const [authMode, setAuthMode] = useState<
+    "login" | "register" | "otp" | "google-profile" | "forgot-password" | "reset-password"
+  >("login");
   const [googleCredential, setGoogleCredential] = useState("");
   const [authEmail, setAuthEmail] = useState("");
   const [authPassword, setAuthPassword] = useState("");
   const [authName, setAuthName] = useState("");
   const [authPhone, setAuthPhone] = useState("");
   const [authOtp, setAuthOtp] = useState("");
+  const [resetOtp, setResetOtp] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const loginMutation = useLogin();
   const registerMutation = useRegister();
   const verifyOtpMutation = useVerifyOtp();
   const resendOtpMutation = useResendOtp();
+  const forgotPasswordMutation = useForgotPassword();
+  const resetPasswordMutation = useResetPassword();
   const googleLoginMutation = useGoogleLogin();
   const googleRegisterMutation = useGoogleRegister();
   const { data: apiOrdersData } = useOrders();
@@ -224,6 +233,71 @@ export function AccountPage() {
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to resend code";
       toast.error("Resend failed", { description: msg });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmedEmail = authEmail.trim().toLowerCase();
+    if (!trimmedEmail || !EMAIL_REGEX.test(trimmedEmail)) {
+      toast.error("Please enter a valid email address");
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      const res = await forgotPasswordMutation.mutateAsync({ email: trimmedEmail });
+      toast.success("Reset code sent", {
+        description: res.message || `If ${trimmedEmail} is registered, a reset code was sent.`,
+      });
+      setAuthMode("reset-password");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to send reset code";
+      toast.error("Request failed", { description: msg });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmedEmail = authEmail.trim().toLowerCase();
+    if (!trimmedEmail || !EMAIL_REGEX.test(trimmedEmail)) {
+      toast.error("Please enter a valid email address");
+      return;
+    }
+    if (!resetOtp.trim()) {
+      toast.error("Please enter the 6-digit reset code");
+      return;
+    }
+    if (newPassword.length < 6) {
+      toast.error("Password must be at least 6 characters");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      toast.error("Passwords do not match");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const res = await resetPasswordMutation.mutateAsync({
+        email: trimmedEmail,
+        otp: resetOtp.trim(),
+        newPassword,
+      });
+      toast.success("Password reset successful", {
+        description: res.message || "You can now sign in with your new password.",
+      });
+      setAuthPassword(newPassword);
+      setResetOtp("");
+      setNewPassword("");
+      setConfirmPassword("");
+      setAuthMode("login");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to reset password";
+      toast.error("Reset failed", { description: msg });
     } finally {
       setIsSubmitting(false);
     }
@@ -421,20 +495,31 @@ export function AccountPage() {
                   ? "Create Your Account"
                   : authMode === "google-profile"
                     ? "Complete Your Profile"
-                    : "Verify Your Email"}
+                    : authMode === "forgot-password"
+                      ? "Reset Password"
+                      : authMode === "reset-password"
+                        ? "Set New Password"
+                        : "Verify Your Email"}
             </h1>
             <p className="text-xs text-muted-foreground leading-relaxed">
               {authMode === "otp"
                 ? `Enter the 6-digit one-time code sent to ${authEmail}`
                 : authMode === "google-profile"
                   ? "Connected via Google. Enter your mobile phone and set a password to finish."
-                  : "Track orders, access saved favorites, and manage your wardrobe."}
+                  : authMode === "forgot-password"
+                    ? "Enter your registered email address and we'll send a 6-digit reset code."
+                    : authMode === "reset-password"
+                      ? `Enter the 6-digit reset code sent to ${authEmail} and your new password.`
+                      : "Track orders, access saved favorites, and manage your wardrobe."}
             </p>
           </div>
 
           <div className="border border-border p-6 sm:p-8 bg-background rounded-sm shadow-soft space-y-4 overflow-hidden">
             {/* Mode Tabs */}
-            {authMode !== "otp" && authMode !== "google-profile" && (
+            {authMode !== "otp" &&
+              authMode !== "google-profile" &&
+              authMode !== "forgot-password" &&
+              authMode !== "reset-password" && (
               <div className="flex border-b border-border/70 mb-4 pb-2">
                 <button
                   type="button"
@@ -481,9 +566,18 @@ export function AccountPage() {
                 </div>
 
                 <div>
-                  <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground block mb-1">
-                    Password
-                  </label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground block">
+                      Password
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setAuthMode("forgot-password")}
+                      className="text-[11px] text-amber-600 font-medium hover:underline"
+                    >
+                      Forgot password?
+                    </button>
+                  </div>
                   <input
                     type="password"
                     required
@@ -744,6 +838,138 @@ export function AccountPage() {
                 </div>
               </form>
             )}
+
+            {/* Form: FORGOT PASSWORD */}
+            {authMode === "forgot-password" && (
+              <form onSubmit={handleForgotPassword} noValidate className="space-y-4">
+                <div>
+                  <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground block mb-1">
+                    Registered Email Address *
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    value={authEmail}
+                    onChange={(e) => setAuthEmail(e.target.value)}
+                    placeholder="you@domain.com"
+                    className="w-full h-11 border border-border px-3 text-xs rounded-sm outline-none focus:border-foreground"
+                  />
+                </div>
+
+                <Button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="w-full h-12 text-xs font-semibold uppercase tracking-[0.14em] bg-ink text-ink-foreground hover:bg-ink/90 rounded-sm mt-2"
+                >
+                  {isSubmitting ? "Sending Reset Code..." : "Send Reset Code"}
+                </Button>
+
+                <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setAuthMode("reset-password")}
+                    className="text-muted-foreground hover:underline"
+                  >
+                    Have a reset code?
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAuthMode("login")}
+                    className="text-amber-600 hover:underline font-medium"
+                  >
+                    Back to Sign In
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {/* Form: RESET PASSWORD */}
+            {authMode === "reset-password" && (
+              <form onSubmit={handleResetPassword} noValidate className="space-y-4">
+                <div>
+                  <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground block mb-1">
+                    Email Address *
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    value={authEmail}
+                    onChange={(e) => setAuthEmail(e.target.value)}
+                    placeholder="you@domain.com"
+                    className="w-full h-11 border border-border px-3 text-xs rounded-sm outline-none focus:border-foreground"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground block mb-1">
+                    6-Digit Reset Code (OTP) *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    maxLength={8}
+                    value={resetOtp}
+                    onChange={(e) => setResetOtp(e.target.value)}
+                    placeholder="Enter 6-digit code"
+                    className="w-full h-12 border border-border px-3 text-center text-lg tracking-widest font-mono rounded-sm outline-none focus:border-foreground"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground block mb-1">
+                    New Password *
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="At least 6 characters"
+                    className="w-full h-11 border border-border px-3 text-xs rounded-sm outline-none focus:border-foreground"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground block mb-1">
+                    Confirm New Password *
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="Re-enter new password"
+                    className="w-full h-11 border border-border px-3 text-xs rounded-sm outline-none focus:border-foreground"
+                  />
+                </div>
+
+                <Button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="w-full h-12 text-xs font-semibold uppercase tracking-[0.14em] bg-ink text-ink-foreground hover:bg-ink/90 rounded-sm mt-2"
+                >
+                  {isSubmitting ? "Resetting Password..." : "Reset Password & Sign In"}
+                </Button>
+
+                <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-2">
+                  <button
+                    type="button"
+                    onClick={handleForgotPassword}
+                    disabled={isSubmitting}
+                    className="text-foreground hover:underline font-semibold"
+                  >
+                    Resend Code
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAuthMode("login")}
+                    className="text-amber-600 hover:underline font-medium"
+                  >
+                    Back to Sign In
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
         </div>
       </div>
@@ -775,7 +1001,7 @@ export function AccountPage() {
           status: (o.status || "Order Placed") as Order["status"],
           deliveryDate: `Estimated ${configuredEstimate}`,
           expectedArrivalDate: formattedExpected,
-          paymentMethod: o.paymentMethod || "Cash on Delivery",
+          paymentMethod: o.paymentMethod || "Online Payment",
           address: {
             id: `addr-${o.id}`,
             fullName: o.customerName || liveUser?.name || "Customer",
@@ -789,8 +1015,8 @@ export function AccountPage() {
           items: (o.items || []).map((it) => ({
             productSlug: it.productId,
             name: it.productName || "Makerman Garment",
-            size: "Regular",
-            color: "Standard",
+            size: it.sizeLabel || "Regular",
+            color: it.colorName || "Standard",
             quantity: it.quantity,
             price: it.price,
           })),
