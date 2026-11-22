@@ -103,6 +103,7 @@ export interface ApiOrderItemDTO {
   id?: string;
   productId: string;
   productName?: string;
+  imageUrl?: string | null;
   variantUuid?: string | null;
   sizeLabel?: string | null;
   colorName?: string | null;
@@ -112,6 +113,7 @@ export interface ApiOrderItemDTO {
 
 export interface ApiOrder {
   id: string;
+  orderNumber?: string | null;
   businessId: string;
   customerId: string;
   customerName: string;

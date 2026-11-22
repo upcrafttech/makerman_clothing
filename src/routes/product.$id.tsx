@@ -1,4 +1,4 @@
-import { createFileRoute, Link, notFound, redirect, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, isRedirect, Link, notFound, redirect, useNavigate } from "@tanstack/react-router";
 import {
   AlertCircle,
   ArrowRight,
@@ -36,29 +36,63 @@ import { getImagesForColor } from "@/lib/product-images";
 import { getVariantStock, isSizeAvailable, getFirstAvailableSize } from "@/lib/product-stock";
 import { apiFetch } from "@/lib/api-client";
 import { useProductReviews } from "@/hooks/use-api";
-import type { ApiProduct } from "@/types/api";
+import type { ApiProduct, ApiPagedProducts } from "@/types/api";
 
 export const Route = createFileRoute("/product/$id")({
   loader: async ({ params }) => {
-    // 1. Try registry by UUID
-    let product = getRegisteredProduct(params.id);
-    if (!product) {
-      // 2. Fetch by UUID directly from backend
+    const rawParam = params.id?.trim() || "";
+
+    // 1. Try registry by UUID or slug
+    let product = getRegisteredProduct(rawParam);
+
+    // 2. Fetch by UUID directly from backend if rawParam looks like a UUID
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(rawParam);
+    if (!product && isUuid) {
       try {
-        const raw = await apiFetch<ApiProduct>(`/products/${params.id}`);
+        const raw = await apiFetch<ApiProduct>(`/products/${rawParam}`);
         if (raw && raw.id) {
           product = adaptProduct(raw);
           registerProducts([product]);
         }
       } catch {
-        /* fallback to null */
+        /* fallback to active product list search */
       }
     }
+
+    // 3. Fallback: Search all active products by slug, ID, or normalized product name (e.g. /product/kurtas or /product/test)
+    if (!product) {
+      try {
+        const json = await apiFetch<ApiPagedProducts>("/products?page=0&size=100&status=ACTIVE");
+        const adapted = (json.content ?? []).map(adaptProduct);
+        registerProducts(adapted);
+
+        const normalizedParam = rawParam.toLowerCase();
+        const matched = adapted.find(
+          (p) =>
+            p.id.toLowerCase() === normalizedParam ||
+            p.slug.toLowerCase() === normalizedParam ||
+            p.name.toLowerCase() === normalizedParam ||
+            p.name.toLowerCase().replace(/\s+/g, "-") === normalizedParam,
+        );
+
+        if (matched) {
+          // If accessing via slug/name, redirect to canonical ID URL
+          if (matched.id !== rawParam) {
+            throw redirect({ to: "/product/$id", params: { id: matched.id } });
+          }
+          product = matched;
+        }
+      } catch (err) {
+        if (isRedirect(err)) throw err;
+      }
+    }
+
     if (!product) {
       throw notFound();
     }
     return { product };
   },
+  notFoundComponent: ProductNotFoundView,
   head: ({ loaderData }) => {
     const p = loaderData?.product;
     return {
@@ -626,11 +660,7 @@ export function ProductDetailPage() {
             <div className="p-4 bg-[#FAF8F5] border border-border/80 rounded-sm space-y-2.5 text-xs text-muted-foreground">
               <div className="flex items-center gap-2.5">
                 <Truck className="h-4 w-4 text-amber-600 shrink-0" strokeWidth={1.5} />
-                <span>Complimentary express delivery on orders over ₹1,999</span>
-              </div>
-              <div className="flex items-center gap-2.5">
-                <RotateCcw className="h-4 w-4 text-amber-600 shrink-0" strokeWidth={1.5} />
-                <span>15-day return window with complimentary doorstep pickup</span>
+                <span>Complimentary express delivery on all orders</span>
               </div>
               <div className="flex items-center gap-2.5">
                 <Package className="h-4 w-4 text-amber-600 shrink-0" strokeWidth={1.5} />
@@ -681,7 +711,7 @@ export function ProductDetailPage() {
                 },
                 {
                   id: "shipping",
-                  title: "Shipping & Free Exchanges",
+                  title: "Shipping & Pan-India Delivery",
                   content: (
                     <div className="space-y-2 text-xs text-muted-foreground leading-relaxed">
                       <p>
@@ -689,8 +719,7 @@ export function ProductDetailPage() {
                         2–3 business days; all India takes 4–6 business days.
                       </p>
                       <p>
-                        First size exchange is completely complimentary with doorstep courier
-                        pickup.
+                        Enjoy complimentary free express delivery on all orders across India.
                       </p>
                     </div>
                   ),
@@ -868,6 +897,39 @@ export function ProductDetailPage() {
         initialIndex={lightboxIndex}
         productName={product.name}
       />
+    </div>
+  );
+}
+
+function ProductNotFoundView() {
+  return (
+    <div className="min-h-[70vh] flex flex-col items-center justify-center px-4 py-16 text-center">
+      <div className="w-16 h-16 rounded-full bg-secondary/80 flex items-center justify-center mb-6">
+        <Package className="w-8 h-8 text-muted-foreground" strokeWidth={1.5} />
+      </div>
+      <p className="eyebrow text-amber-600 font-semibold tracking-widest mb-2">
+        Catalogue Notice
+      </p>
+      <h1 className="font-display text-3xl sm:text-4xl font-normal text-foreground mb-3">
+        Garment Not Found
+      </h1>
+      <p className="text-sm text-muted-foreground max-w-md mb-8 leading-relaxed">
+        The piece you are looking for is no longer available or the link may have been updated. Explore our full seasonal collection.
+      </p>
+      <div className="flex flex-col sm:flex-row gap-3">
+        <Link
+          to="/shop"
+          className="inline-flex items-center justify-center px-8 h-12 bg-ink text-ink-foreground text-xs font-semibold uppercase tracking-[0.14em] rounded-sm hover:bg-ink/90 transition-all"
+        >
+          Explore Collection
+        </Link>
+        <Link
+          to="/"
+          className="inline-flex items-center justify-center px-8 h-12 border border-border bg-surface text-foreground text-xs font-semibold uppercase tracking-[0.14em] rounded-sm hover:bg-secondary transition-all"
+        >
+          Return Home
+        </Link>
+      </div>
     </div>
   );
 }

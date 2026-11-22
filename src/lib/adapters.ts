@@ -289,6 +289,7 @@ export function adaptProduct(api: ApiProduct): Product {
     reviewCount: Number(api.reviewCount ?? 0),
     images,
     productImages: productImages.length > 0 ? productImages : undefined,
+    generalImagePosition: (meta("generalImagePosition")?.toUpperCase() as "FIRST" | "LAST") || "LAST",
     badge,
     inStock: api.stock > 0,
     stockCount: api.stock ?? 0,

@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { ArrowRight, Minus, Plus, ShoppingBag, Trash2, X } from "lucide-react";
+import { ArrowRight, Minus, Plus, ShoppingBag, Trash2, Truck, X } from "lucide-react";
 import { useEffect } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -78,26 +78,10 @@ export function CartDrawer() {
           </button>
         </div>
 
-        {/* Free Shipping Progress */}
-        <div className="border-b border-border bg-secondary/50 px-6 py-3">
-          <div className="flex items-center justify-between text-xs mb-1.5">
-            <span className="text-muted-foreground">
-              {amountNeeded === 0 ? (
-                <span className="font-medium text-foreground">You have unlocked complimentary shipping!</span>
-              ) : (
-                <>
-                  <span className="num font-semibold text-foreground">{formatINR(amountNeeded)}</span> away from complimentary shipping
-                </>
-              )}
-            </span>
-            <span className="num text-[11px] text-muted-foreground">{Math.round(progressPercent)}%</span>
-          </div>
-          <div className="h-1 w-full overflow-hidden bg-border rounded-full">
-            <div
-              className="h-full bg-ink transition-all duration-500 ease-out"
-              style={{ width: `${progressPercent}%` }}
-            />
-          </div>
+        {/* Free Shipping Badge */}
+        <div className="border-b border-border bg-[#FAF8F5] px-6 py-2.5 flex items-center gap-2 text-xs">
+          <Truck className="h-4 w-4 text-amber-600 shrink-0" strokeWidth={1.5} />
+          <span className="font-semibold text-emerald-700">Complimentary Free Delivery on All Orders</span>
         </div>
 
         {/* Cart Item List */}

@@ -1,5 +1,12 @@
 export type ColorOption = { name: string; hex: string };
 
+export type ProductImageItem = {
+  url: string;
+  colorName?: string | null | undefined;
+  colorCode?: string | null | undefined;
+  sortOrder?: number | undefined;
+};
+
 export type Product = {
   id: string;
   slug: string;
@@ -21,6 +28,8 @@ export type Product = {
   rating: number;
   reviewCount: number;
   images: string[];
+  productImages?: ProductImageItem[] | undefined;
+  generalImagePosition?: "FIRST" | "LAST" | undefined;
   badge?: "New" | "Best Seller" | "Limited" | "Sale" | "Featured" | undefined;
   inStock: boolean;
   stockCount: number;
@@ -92,12 +101,13 @@ export type OrderStatus =
 
 export type Order = {
   id: string;
+  orderNumber?: string | null | undefined;
   date: string;
   status: OrderStatus;
   deliveryDate: string;
   paymentMethod: string;
   address: Address;
-  items: { productSlug: string; name: string; size: string; color: string; quantity: number; price: number }[];
+  items: { productSlug: string; productId?: string; name: string; size: string; color: string; quantity: number; price: number; imageUrl?: string | null | undefined }[];
   subtotal: number;
   shipping: number;
   tax: number;

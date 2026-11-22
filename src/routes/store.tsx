@@ -285,7 +285,6 @@ export function StorePage() {
                 {[
                   { label: "All", value: "all" },
                   { label: "Men", value: "men" },
-                  { label: "Women", value: "women" },
                 ].map((g) => (
                   <button
                     key={g.value}
@@ -585,7 +584,6 @@ export function StorePage() {
                 {[
                   { label: "All", value: "all" },
                   { label: "Men", value: "men" },
-                  { label: "Women", value: "women" },
                 ].map((g) => (
                   <button
                     key={g.value}

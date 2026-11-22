@@ -18,7 +18,7 @@ import { toast } from "sonner";
 
 import { MakermanLogo } from "@/components/layout/makerman-logo";
 import { Button } from "@/components/ui/button";
-import { cartTotals, formatINR } from "@/lib/format";
+import { cartTotals, formatINR, formatOrderId } from "@/lib/format";
 import { useShop } from "@/lib/shop-store";
 import { cn } from "@/lib/utils";
 import { productService } from "@/services";
@@ -102,10 +102,8 @@ export function CheckoutPage() {
 
   const { data: deliveryConfig } = useDeliveryConfig();
   const activeLines = cart.filter((l) => !l.savedForLater);
-  const standardCharge = Number(deliveryConfig?.standardCharge ?? 0);
-  const freeThreshold = Number(deliveryConfig?.freeShippingThreshold ?? 999);
-  const isFreeStandard = subtotal >= freeThreshold;
-  const standardShipping = isFreeStandard ? 0 : standardCharge;
+  const isFreeStandard = true;
+  const standardShipping = 0;
   const expressCharge = Number(deliveryConfig?.expressCharge ?? 150);
   const expressEnabled = Boolean(deliveryConfig?.expressEnabled);
 
@@ -305,9 +303,10 @@ export function CheckoutPage() {
       return;
     }
 
-    const completeOrderSuccess = (finalOrderId: string, finalPaymentMethod: string) => {
+    const completeOrderSuccess = (finalOrderId: string, finalPaymentMethod: string, finalOrderNumber?: string | null) => {
       const newOrder: Order = {
         id: finalOrderId,
+        orderNumber: finalOrderNumber,
         date: new Date().toISOString().split("T")[0]!,
         status: "Confirmed",
         deliveryDate: activeDeliveryEstimate,
@@ -453,6 +452,7 @@ export function CheckoutPage() {
             completeOrderSuccess(
               platformOrderId,
               `Razorpay Online (${response.razorpay_payment_id.slice(-6)})`,
+              backendOrder?.orderNumber,
             );
           } catch (verifyErr: any) {
             console.error("Payment verification failed:", verifyErr);
@@ -497,7 +497,7 @@ export function CheckoutPage() {
             Your receipt and fulfillment updates have been dispatched to your contact phone and email.
           </p>
           <div className="inline-block border border-border px-4 py-2 bg-[#FAF8F5] text-xs font-mono rounded-sm">
-            Order Reference: <strong className="text-foreground">{order.id}</strong>
+            Order Reference: <strong className="text-foreground">{formatOrderId(order.id, order.orderNumber)}</strong>
           </div>
         </div>
 

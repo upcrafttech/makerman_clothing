@@ -186,6 +186,19 @@ export function getImagesForColor(product: Product, selectedColor?: string | nul
   const activeName = activeColor?.name || selectedColor;
   const activeHex = activeColor?.hex;
 
+  // General images (tagged as 'general' or having no colorName)
+  const generalUrls = productImages
+    .filter((img) => !img.colorName || img.colorName.trim().toLowerCase() === "general")
+    .map((img) => img.url);
+
+  const combineWithGeneral = (colorUrls: string[]) => {
+    const isFirst = product.generalImagePosition === "FIRST";
+    const combined = isFirst
+      ? [...generalUrls, ...colorUrls]
+      : [...colorUrls, ...generalUrls];
+    return Array.from(new Set(combined.filter(Boolean)));
+  };
+
   // 1. Check explicit color matches from productImages
   if (productImages.length > 0) {
     const explicitMatches = productImages.filter((img) => {
@@ -195,8 +208,7 @@ export function getImagesForColor(product: Product, selectedColor?: string | nul
     });
 
     if (explicitMatches.length > 0) {
-      // Return ONLY the images tagged with this color
-      return explicitMatches.map((img) => img.url);
+      return combineWithGeneral(explicitMatches.map((img) => img.url));
     }
   }
 
@@ -205,7 +217,7 @@ export function getImagesForColor(product: Product, selectedColor?: string | nul
   const urlMatches = candidateUrls.filter((url) => urlMatchesColor(url, activeName, activeHex));
 
   if (urlMatches.length > 0) {
-    return urlMatches;
+    return combineWithGeneral(urlMatches);
   }
 
   // 3. Positional / 1-to-1 index matching:
@@ -217,17 +229,13 @@ export function getImagesForColor(product: Product, selectedColor?: string | nul
         c.hex.trim().toLowerCase() === selectedColor.trim().toLowerCase(),
     );
     if (colorIndex >= 0 && candidateUrls[colorIndex]) {
-      return [candidateUrls[colorIndex]];
+      return combineWithGeneral([candidateUrls[colorIndex]]);
     }
   }
 
   // 4. Check if there are general images tagged explicitly
-  const generalImages = productImages
-    .filter((img) => !img.colorName || img.colorName.trim().toLowerCase() === "general")
-    .map((img) => img.url);
-
-  if (generalImages.length > 0) {
-    return generalImages;
+  if (generalUrls.length > 0) {
+    return Array.from(new Set(generalUrls));
   }
 
   // 5. Fallback to first image or all images

@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { ChevronDown, Instagram, Facebook, ShieldCheck, Truck, RotateCcw } from "lucide-react";
+import { ChevronDown, Instagram, Facebook, ShieldCheck, Truck, CreditCard } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -52,7 +52,7 @@ export function Footer() {
             <strong>Pan-India Delivery:</strong> We ship across all serviceable PIN codes in India. Metro deliveries typically arrive within 2–3 business days. Rest of India takes 4–6 business days.
           </p>
           <p>
-            <strong>Complimentary Shipping:</strong> Enjoy free express shipping on all orders over ₹1,999. For orders under ₹1,999, a flat delivery fee of ₹99 is charged.
+            <strong>Complimentary Shipping:</strong> Enjoy free express shipping on all orders pan-India with zero delivery fees.
           </p>
           <p>
             <strong>Eco-Minded Packaging:</strong> Every Makerman garment is hand-folded, wrapped in archival tissue, and shipped in 100% recyclable tamper-evident mailers.
@@ -141,14 +141,14 @@ export function Footer() {
               <Truck className="h-5 w-5 text-amber-600 shrink-0" strokeWidth={1.5} />
               <div>
                 <p className="text-xs font-semibold tracking-wider uppercase">Pan-India Express</p>
-                <p className="text-[0.75rem] text-muted-foreground">Free shipping on orders above ₹1,999</p>
+                <p className="text-[0.75rem] text-muted-foreground">Free delivery on all orders</p>
               </div>
             </div>
             <div className="flex items-center justify-center sm:justify-start gap-3">
-              <RotateCcw className="h-5 w-5 text-amber-600 shrink-0" strokeWidth={1.5} />
+              <CreditCard className="h-5 w-5 text-amber-600 shrink-0" strokeWidth={1.5} />
               <div>
-                <p className="text-xs font-semibold tracking-wider uppercase">Easy 15-Day Returns</p>
-                <p className="text-[0.75rem] text-muted-foreground">Free first exchange with doorstep pickup</p>
+                <p className="text-xs font-semibold tracking-wider uppercase">100% Secure Checkout</p>
+                <p className="text-[0.75rem] text-muted-foreground">Prepaid UPI, Cards & Net Banking via Razorpay</p>
               </div>
             </div>
             <div className="flex items-center justify-center sm:justify-start gap-3">
@@ -177,9 +177,6 @@ export function Footer() {
                 <p className="text-[0.6875rem] font-semibold uppercase tracking-widest text-foreground">
                   Feeling Happiness
                 </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Atelier: {store.fullAddress}
-                </p>
               </div>
             </div>
 
@@ -197,11 +194,6 @@ export function Footer() {
                 <li>
                   <Link to="/store" search={{ gender: "men" }} className="hover:text-foreground transition-colors">
                     Men's Collection
-                  </Link>
-                </li>
-                <li>
-                  <Link to="/store" search={{ gender: "women" }} className="hover:text-foreground transition-colors">
-                    Women's Collection
                   </Link>
                 </li>
                 <li>
@@ -230,15 +222,6 @@ export function Footer() {
                     className="hover:text-foreground transition-colors text-left"
                   >
                     Shipping Information
-                  </button>
-                </li>
-                <li>
-                  <button
-                    type="button"
-                    onClick={() => setActivePolicy("returns")}
-                    className="hover:text-foreground transition-colors text-left"
-                  >
-                    Returns & Exchanges
                   </button>
                 </li>
                 <li>
@@ -320,7 +303,6 @@ export function Footer() {
                   <div className="space-y-2.5 pb-3 pt-1 text-xs text-muted-foreground animate-in fade-in-50">
                     <p><Link to="/store" search={{ collection: "new-arrivals" }}>New Arrivals</Link></p>
                     <p><Link to="/store" search={{ gender: "men" }}>Men's Collection</Link></p>
-                    <p><Link to="/store" search={{ gender: "women" }}>Women's Collection</Link></p>
                     <p><Link to="/store">All Garments</Link></p>
                   </div>
                 )}
@@ -345,7 +327,6 @@ export function Footer() {
                   <div className="space-y-2.5 pb-3 pt-1 text-xs text-muted-foreground animate-in fade-in-50">
                     <p><Link to="/contact">Contact Concierge & FAQ</Link></p>
                     <p><button type="button" onClick={() => setActivePolicy("shipping")}>Shipping Policy</button></p>
-                    <p><button type="button" onClick={() => setActivePolicy("returns")}>Returns & Exchanges</button></p>
                     <p><a href={getWhatsAppHref(store.whatsapp || store.phone, store.name)} target="_blank" rel="noopener noreferrer">WhatsApp Support</a></p>
                   </div>
                 )}
@@ -438,14 +419,6 @@ export function Footer() {
                 className="hover:text-foreground transition-colors"
               >
                 Shipping Terms
-              </button>
-              <span>·</span>
-              <button
-                type="button"
-                onClick={() => setActivePolicy("returns")}
-                className="hover:text-foreground transition-colors"
-              >
-                Return Policy
               </button>
             </div>
           </div>

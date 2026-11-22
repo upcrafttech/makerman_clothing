@@ -117,27 +117,10 @@ export function CartPage() {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-14 items-start">
             {/* Bag Lines List */}
             <div className="lg:col-span-8 space-y-6">
-              {/* Free Shipping Progress Indicator */}
-              <div className="border border-border/80 bg-[#FAF8F5] p-4 rounded-sm">
-                <div className="flex items-center justify-between text-xs mb-2">
-                  <span className="flex items-center gap-2 text-foreground font-medium">
-                    <Truck className="h-4 w-4 text-amber-600 shrink-0" />
-                    {amountNeeded === 0 ? (
-                      <span className="text-emerald-700 font-semibold">You have unlocked complimentary express shipping!</span>
-                    ) : (
-                      <span>
-                        <strong className="font-semibold">{formatINR(amountNeeded)}</strong> away from complimentary shipping
-                      </span>
-                    )}
-                  </span>
-                  <span className="text-[11px] font-semibold text-muted-foreground">{Math.round(progressPercent)}%</span>
-                </div>
-                <div className="h-1.5 w-full overflow-hidden bg-border/70 rounded-full">
-                  <div
-                    className="h-full bg-ink transition-all duration-500 ease-out"
-                    style={{ width: `${progressPercent}%` }}
-                  />
-                </div>
+              {/* Free Delivery Banner */}
+              <div className="border border-border/80 bg-[#FAF8F5] p-3.5 rounded-sm flex items-center gap-2.5 text-xs text-foreground font-medium">
+                <Truck className="h-4 w-4 text-amber-600 shrink-0" strokeWidth={1.5} />
+                <span className="text-emerald-700 font-semibold">Complimentary Express Delivery on All Orders</span>
               </div>
 
               {/* Items List */}

@@ -27,7 +27,7 @@ import { toast } from "sonner";
 import { MakermanLogo } from "@/components/layout/makerman-logo";
 import { ProductCard } from "@/components/product/product-card";
 import { Button } from "@/components/ui/button";
-import { formatINR } from "@/lib/format";
+import { formatINR, formatOrderId } from "@/lib/format";
 import { useShop } from "@/lib/shop-store";
 import { cn } from "@/lib/utils";
 import { productService } from "@/services";
@@ -993,6 +993,7 @@ export function AccountPage() {
 
         return {
           id: o.id,
+          orderNumber: o.orderNumber,
           date: orderDate.toLocaleDateString("en-IN", {
             month: "short",
             day: "numeric",
@@ -1012,14 +1013,21 @@ export function AccountPage() {
             pincode: "400013",
             isDefault: true,
           },
-          items: (o.items || []).map((it) => ({
-            productSlug: it.productId,
-            name: it.productName || "Makerman Garment",
-            size: it.sizeLabel || "Regular",
-            color: it.colorName || "Standard",
-            quantity: it.quantity,
-            price: it.price,
-          })),
+          items: (o.items || []).map((it) => {
+            const registered = getRegisteredProduct(it.productId) ?? productService.bySlug(it.productId);
+            const resolvedImg = it.imageUrl || registered?.images?.[0] || "/images/p-shirt-1.jpg";
+            const targetId = registered?.id || registered?.slug || it.productId;
+            return {
+              productSlug: targetId,
+              productId: targetId,
+              name: it.productName || registered?.name || "Makerman Garment",
+              size: it.sizeLabel || "Regular",
+              color: it.colorName || "Standard",
+              quantity: it.quantity,
+              price: it.price,
+              imageUrl: resolvedImg,
+            };
+          }),
           subtotal: o.totalAmount,
           shipping: 0,
           tax: 0,
@@ -1146,7 +1154,7 @@ export function AccountPage() {
                   </span>
                 </div>
                 <div className="text-xs text-muted-foreground space-y-1">
-                  <p>Order ID: <strong className="text-foreground">{effectiveOrders[0]?.id}</strong> · Placed on {effectiveOrders[0]?.date}</p>
+                  <p>Order ID: <strong className="text-foreground font-mono font-semibold">{formatOrderId(effectiveOrders[0]?.id, effectiveOrders[0]?.orderNumber)}</strong> · Placed on {effectiveOrders[0]?.date}</p>
                   <p>Total: <strong className="text-foreground font-semibold">{formatINR(effectiveOrders[0]?.total ?? 0)}</strong></p>
                 </div>
                 <div className="mt-4 pt-4 border-t border-border/60">
@@ -1188,13 +1196,27 @@ export function AccountPage() {
                     <div key={order.id} className="border border-border rounded-sm bg-background overflow-hidden shadow-xs">
                       {/* Order Header */}
                       <div className="p-4 sm:p-5 bg-[#FAF8F5] border-b border-border flex flex-wrap items-center justify-between gap-3 text-xs">
-                        <div>
-                          <span className="text-muted-foreground">Order #</span>
-                          <strong className="text-foreground ml-1 font-mono">{order.id}</strong>
-                          <span className="text-muted-foreground ml-3">Date: {order.date}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-muted-foreground">Order:</span>
+                          <strong className="text-foreground font-mono font-bold tracking-wider text-sm">
+                            {formatOrderId(order.id, order.orderNumber)}
+                          </strong>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              navigator.clipboard.writeText(formatOrderId(order.id, order.orderNumber));
+                              toast.success("Order ID copied to clipboard");
+                            }}
+                            className="p-1 text-muted-foreground hover:text-foreground transition-colors"
+                            title="Copy Order ID"
+                          >
+                            <Copy className="h-3.5 w-3.5" />
+                          </button>
+                          <span className="text-muted-foreground ml-2 hidden sm:inline">·</span>
+                          <span className="text-muted-foreground hidden sm:inline">Placed on {order.date}</span>
                         </div>
                         <div className="flex items-center gap-3">
-                          <span className="px-2.5 py-0.5 rounded-xs bg-emerald-100 text-emerald-800 font-semibold text-[11px]">
+                          <span className="px-2.5 py-0.5 rounded-xs bg-emerald-100 text-emerald-800 font-semibold text-[11px] uppercase tracking-wider">
                             {order.status}
                           </span>
                           <span className="font-display text-sm font-semibold text-foreground">
@@ -1279,22 +1301,80 @@ export function AccountPage() {
                         </div>
                       </div>
 
-                      {/* Order Items */}
-                      <div className="p-5 divide-y divide-border/60">
-                        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground pb-2">
-                          Garments Ordered
-                        </p>
-                        {order.items.map((item, idx) => (
-                          <div key={idx} className="py-3 flex items-center justify-between text-xs">
-                            <div>
-                              <p className="font-semibold text-foreground">{item.name}</p>
-                              <p className="text-[11px] text-muted-foreground mt-0.5">
-                                Size: {item.size} · Color: {item.color} · Qty: {item.quantity}
-                              </p>
-                            </div>
-                            <span className="font-semibold text-foreground">{formatINR(item.price * item.quantity)}</span>
-                          </div>
-                        ))}
+                      {/* Order Items with Clickable Garment Cards */}
+                      <div className="p-5">
+                        <div className="flex items-center justify-between pb-3 border-b border-border/60">
+                          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                            Garments Ordered ({order.items.length})
+                          </p>
+                          <span className="text-[10px] text-muted-foreground hidden sm:inline">
+                            Click any garment to view details
+                          </span>
+                        </div>
+                        <div className="divide-y divide-border/60">
+                          {order.items.map((item, idx) => {
+                            const productRouteId = item.productId || item.productSlug;
+                            return (
+                              <div key={idx} className="py-3.5 flex items-center justify-between gap-4 group">
+                                <div className="flex items-center gap-3.5 min-w-0">
+                                  <Link
+                                    to="/product/$id"
+                                    params={{ id: productRouteId }}
+                                    className="h-14 w-12 shrink-0 rounded-xs overflow-hidden bg-secondary border border-border/80 block hover:opacity-90 transition-opacity"
+                                  >
+                                    <img
+                                      src={item.imageUrl || "/images/p-shirt-1.jpg"}
+                                      alt={item.name}
+                                      className="h-full w-full object-cover"
+                                      onError={(e) => {
+                                        (e.target as HTMLImageElement).src = "/images/p-shirt-1.jpg";
+                                      }}
+                                    />
+                                  </Link>
+                                  <div className="min-w-0">
+                                    <Link
+                                      to="/product/$id"
+                                      params={{ id: productRouteId }}
+                                      className="font-semibold text-xs sm:text-sm text-foreground hover:text-amber-800 hover:underline flex items-center gap-1.5 transition-colors truncate"
+                                    >
+                                      <span className="truncate">{item.name}</span>
+                                      <ArrowRight className="h-3 w-3 shrink-0 text-muted-foreground opacity-50 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" />
+                                    </Link>
+                                    <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                                      <span className="inline-flex items-center px-2 py-0.5 text-[10px] font-medium bg-secondary text-foreground rounded-xs border border-border/60">
+                                        Size: {item.size}
+                                      </span>
+                                      <span className="inline-flex items-center px-2 py-0.5 text-[10px] font-medium bg-secondary text-foreground rounded-xs border border-border/60">
+                                        Color: {item.color}
+                                      </span>
+                                      <span className="inline-flex items-center px-2 py-0.5 text-[10px] font-medium bg-secondary text-foreground rounded-xs border border-border/60">
+                                        Qty: {item.quantity}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+                                <div className="text-right shrink-0">
+                                  <span className="font-semibold text-xs sm:text-sm text-foreground block font-mono">
+                                    {formatINR(item.price * item.quantity)}
+                                  </span>
+                                  {item.quantity > 1 && (
+                                    <span className="text-[10px] text-muted-foreground block font-mono">
+                                      ({formatINR(item.price)} each)
+                                    </span>
+                                  )}
+                                  <Link
+                                    to="/product/$id"
+                                    params={{ id: productRouteId }}
+                                    className="inline-flex items-center gap-1 text-[11px] font-medium text-amber-700 hover:text-amber-900 hover:underline mt-1"
+                                  >
+                                    <span>View Piece</span>
+                                    <ExternalLink className="h-2.5 w-2.5" />
+                                  </Link>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
                       </div>
 
                       {/* Delivery Address & Payment Breakdown Details */}

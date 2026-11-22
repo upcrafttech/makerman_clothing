@@ -15,7 +15,7 @@ interface Banner {
   active: boolean;
 }
 
-const DEFAULT_ANNOUNCEMENT = "Complimentary Pan-India Shipping on orders above ₹1,999 · Feeling Happiness";
+const DEFAULT_ANNOUNCEMENT = "Complimentary Pan-India Shipping on all orders · Feeling Happiness";
 
 export function AnnouncementBar() {
   const [activeBanner, setActiveBanner] = useState<Banner | null>(null);
