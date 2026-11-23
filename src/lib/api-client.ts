@@ -39,6 +39,13 @@ export async function apiFetch<T>(
   const data = isJson ? await res.json() : await res.text();
 
   if (!res.ok) {
+    if ((res.status === 401 || res.status === 403) && token) {
+      if (typeof window !== "undefined") {
+        try {
+          window.localStorage.removeItem("makerman.auth");
+        } catch {}
+      }
+    }
     const errorMsg =
       (typeof data === "object" && data !== null && "message" in data
         ? (data as { message: string }).message

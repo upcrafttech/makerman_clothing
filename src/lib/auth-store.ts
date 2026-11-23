@@ -1,5 +1,30 @@
 const KEY = "makerman.auth";
 
+/**
+ * Checks whether a given JWT token string is structurally expired.
+ */
+function isJwtExpired(token: string): boolean {
+  try {
+    const parts = token.split(".");
+    if (parts.length !== 3) return true;
+    const base64Url = parts[1];
+    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split("")
+        .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+        .join(""),
+    );
+    const parsed = JSON.parse(jsonPayload);
+    if (typeof parsed.exp === "number") {
+      return Date.now() >= parsed.exp * 1000 - 10000;
+    }
+    return false;
+  } catch {
+    return true;
+  }
+}
+
 export interface AuthUser {
   token: string;
   id: string;
@@ -20,7 +45,13 @@ export const authStore = {
     if (typeof window === "undefined") return null;
     try {
       const raw = window.localStorage.getItem(KEY);
-      return raw ? (JSON.parse(raw) as AuthUser) : null;
+      if (!raw) return null;
+      const user = JSON.parse(raw) as AuthUser;
+      if (!user || !user.token || isJwtExpired(user.token)) {
+        window.localStorage.removeItem(KEY);
+        return null;
+      }
+      return user;
     } catch {
       return null;
     }

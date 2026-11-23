@@ -512,9 +512,22 @@ export function ProductDetailPage() {
             {/* Size Selector with min 44px touch targets */}
             <div className="border-t border-border/80 pt-5">
               <div className="flex items-center justify-between text-xs mb-2.5">
-                <span className="font-semibold uppercase tracking-wider text-foreground">
-                  Select Size
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold uppercase tracking-wider text-foreground">
+                    Select Size
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOpenAccordion("fit");
+                      document.getElementById("accordion-fit")?.scrollIntoView({ behavior: "smooth" });
+                    }}
+                    className="flex items-center gap-1 text-[0.6875rem] font-medium text-amber-700 hover:text-amber-800 underline underline-offset-2"
+                  >
+                    <Ruler className="h-3 w-3" />
+                    Size Guide
+                  </button>
+                </div>
                 {selectedSize && isCurrentSizeAvailable && (
                   <span className="text-xs font-medium text-muted-foreground">
                     {currentSizeStock} in stock
@@ -656,70 +669,87 @@ export function ProductDetailPage() {
               </Button>
             </div>
 
-            {/* Assurance Box */}
-            <div className="p-4 bg-[#FAF8F5] border border-border/80 rounded-sm space-y-2.5 text-xs text-muted-foreground">
-              <div className="flex items-center gap-2.5">
-                <Truck className="h-4 w-4 text-amber-600 shrink-0" strokeWidth={1.5} />
-                <span>Complimentary express delivery on all orders</span>
+            {/* Assurance Box & Guarantees */}
+            <div className="p-4 bg-[#FAF8F5] border border-border/80 rounded-sm space-y-3.5 text-xs">
+              <div className="flex items-start gap-2.5">
+                <Truck className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" strokeWidth={1.5} />
+                <div>
+                  <p className="font-semibold text-foreground">Free Pan-India Delivery</p>
+                  <p className="text-muted-foreground mt-0.5 leading-relaxed">
+                    Enjoy free shipping on every order, with no minimum purchase.
+                  </p>
+                </div>
               </div>
-              <div className="flex items-center gap-2.5">
-                <Package className="h-4 w-4 text-amber-600 shrink-0" strokeWidth={1.5} />
-                <span>Shipped in 100% recyclable plastic-free paper packaging</span>
+              <div className="flex items-start gap-2.5">
+                <RotateCcw className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" strokeWidth={1.5} />
+                <div>
+                  <p className="font-semibold text-foreground">No Returns or Exchanges</p>
+                  <p className="text-muted-foreground mt-0.5 leading-relaxed">
+                    Please check your size carefully before placing your order.
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-start gap-2.5">
+                <ShieldCheck className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" strokeWidth={1.5} />
+                <div>
+                  <p className="font-semibold text-foreground">Quality You Can Trust</p>
+                  <p className="text-muted-foreground mt-0.5 leading-relaxed">
+                    Premium men's fashion selected for lasting style, comfort and everyday wear.
+                  </p>
+                </div>
               </div>
             </div>
 
-            {/* Accordions for Materials, Care, Fit, Shipping */}
+            {/* Accordions for Materials, Shipping, Fit & Size */}
             <div className="divide-y divide-border border-y border-border">
               {[
                 {
                   id: "materials",
                   title: "Materials & Care Instructions",
                   content: (
-                    <div className="space-y-2 text-xs text-muted-foreground leading-relaxed">
+                    <div className="space-y-2.5 text-xs text-muted-foreground leading-relaxed">
                       <p>
                         <strong className="text-foreground">Fabric Composition:</strong>{" "}
-                        {product.material}
+                        {product.material && product.material !== "Premium Craft Fabric"
+                          ? product.material
+                          : "Premium Quality Cotton Fabric"}
                       </p>
                       <p>
                         <strong className="text-foreground">Care Guidelines:</strong>{" "}
-                        {product.care.join(". ")}
+                        Machine wash cold or gentle hand wash. Wash with similar colours. Do not
+                        bleach. Dry in shade. Iron at medium temperature.
                       </p>
                       <ul className="list-disc list-inside space-y-1 pt-1">
-                        {product.details.map((d, i) => (
-                          <li key={i}>{d}</li>
-                        ))}
+                        <li>Soft and breathable cotton fabric</li>
+                        <li>Comfortable feel for everyday wear</li>
+                        <li>Quality fabric selected for lasting comfort and style</li>
                       </ul>
                     </div>
                   ),
                 },
                 {
-                  id: "fit",
-                  title: "Fit & Silhouette Details",
+                  id: "shipping",
+                  title: "Shipping & Delivery",
                   content: (
                     <div className="space-y-2 text-xs text-muted-foreground leading-relaxed">
                       <p>
-                        Designed with a <strong className="text-foreground">{product.fit}</strong>{" "}
-                        profile. Cut to drape cleanly without pulling at high-movement stress
-                        points.
+                        Orders are processed and dispatched within 24–48 hours. Standard delivery takes
+                        approximately 5–7 business days, depending on your delivery location.
                       </p>
                       <p>
-                        We recommend taking your standard size for the intended silhouette, or
-                        sizing down for a closer classic fit.
+                        Enjoy free shipping on every order, with no minimum purchase.
                       </p>
                     </div>
                   ),
                 },
                 {
-                  id: "shipping",
-                  title: "Shipping & Pan-India Delivery",
+                  id: "fit",
+                  title: "Fit & Size Guide",
                   content: (
                     <div className="space-y-2 text-xs text-muted-foreground leading-relaxed">
                       <p>
-                        Orders dispatch within 24 hours from our Mumbai studio. Metro delivery takes
-                        2–3 business days; all India takes 4–6 business days.
-                      </p>
-                      <p>
-                        Enjoy complimentary free express delivery on all orders across India.
+                        Check our size chart before placing your order to find the best fit. We
+                        recommend choosing your regular size for a comfortable fit.
                       </p>
                     </div>
                   ),
@@ -727,7 +757,7 @@ export function ProductDetailPage() {
               ].map((section) => {
                 const isOpen = openAccordion === section.id;
                 return (
-                  <div key={section.id} className="py-3.5">
+                  <div key={section.id} id={`accordion-${section.id}`} className="py-3.5">
                     <button
                       type="button"
                       onClick={() => setOpenAccordion(isOpen ? null : section.id)}

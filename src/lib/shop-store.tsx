@@ -240,7 +240,17 @@ export function ShopProvider({ children }: { children: ReactNode }) {
           cart: cartLines,
         }));
       }
-    } catch (e) {
+    } catch (e: any) {
+      const isAuthErr =
+        e?.message?.includes("403") ||
+        e?.message?.includes("401") ||
+        e?.message?.toLowerCase().includes("forbidden") ||
+        e?.message?.toLowerCase().includes("unauthorized");
+      if (isAuthErr) {
+        authStore.clear();
+        patch((prev) => ({ ...prev, session: null }));
+        return;
+      }
       console.warn("Backend cart fetch failed:", e);
     }
 
@@ -263,7 +273,17 @@ export function ShopProvider({ children }: { children: ReactNode }) {
           wishlist: slugs,
         }));
       }
-    } catch (e) {
+    } catch (e: any) {
+      const isAuthErr =
+        e?.message?.includes("403") ||
+        e?.message?.includes("401") ||
+        e?.message?.toLowerCase().includes("forbidden") ||
+        e?.message?.toLowerCase().includes("unauthorized");
+      if (isAuthErr) {
+        authStore.clear();
+        patch((prev) => ({ ...prev, session: null }));
+        return;
+      }
       console.warn("Backend wishlist fetch failed:", e);
     }
 
@@ -280,7 +300,17 @@ export function ShopProvider({ children }: { children: ReactNode }) {
           addresses: apiAddrs.data.map(adaptCustomerAddress),
         }));
       }
-    } catch (e) {
+    } catch (e: any) {
+      const isAuthErr =
+        e?.message?.includes("403") ||
+        e?.message?.includes("401") ||
+        e?.message?.toLowerCase().includes("forbidden") ||
+        e?.message?.toLowerCase().includes("unauthorized");
+      if (isAuthErr) {
+        authStore.clear();
+        patch((prev) => ({ ...prev, session: null }));
+        return;
+      }
       console.warn("Backend addresses fetch failed:", e);
     }
   }, [patch]);

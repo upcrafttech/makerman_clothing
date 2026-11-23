@@ -269,19 +269,25 @@ export function adaptProduct(api: ApiProduct): Product {
     compareAtPrice: api.comparePrice ? Number(api.comparePrice) : undefined,
     shortDescription: api.description ? api.description.slice(0, 140) : "",
     description: api.description ?? "",
-    material: meta("material") ?? "Premium Craft Fabric",
-    fit: meta("fit") ?? "Tailored Regular Fit",
+    material: meta("material") ?? "Premium Quality Cotton Fabric",
+    fit: meta("fit") ?? "Regular Fit",
     care: meta("care")
       ?.split("|")
       .map((c) => c.trim())
-      .filter(Boolean) ?? ["Dry clean or cold wash", "Do not bleach", "Warm iron inside out"],
+      .filter(Boolean) ?? [
+      "Machine wash cold or gentle hand wash",
+      "Wash with similar colours",
+      "Do not bleach",
+      "Dry in shade",
+      "Iron at medium temperature",
+    ],
     details: meta("details")
       ?.split("|")
       .map((d) => d.trim())
       .filter(Boolean) ?? [
-      "Designed and crafted by Makerman",
-      "Reinforced seams for lasting durability",
-      "Breathable high-density weave",
+      "Soft and breathable cotton fabric",
+      "Comfortable feel for everyday wear",
+      "Quality fabric selected for lasting comfort and style",
     ],
     colors: colors.length > 0 ? colors : [{ name: "Standard", hex: "#1A1A1A" }],
     sizes: sizes.length > 0 ? sizes : ["M", "L", "XL"],

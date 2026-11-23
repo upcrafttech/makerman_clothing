@@ -15,7 +15,7 @@ interface Banner {
   active: boolean;
 }
 
-const DEFAULT_ANNOUNCEMENT = "Complimentary Pan-India Shipping on all orders · Feeling Happiness";
+const DEFAULT_ANNOUNCEMENT = "Complimentary Pan-India Shipping - Free Delivery on all orders";
 
 export function AnnouncementBar() {
   const [activeBanner, setActiveBanner] = useState<Banner | null>(null);
