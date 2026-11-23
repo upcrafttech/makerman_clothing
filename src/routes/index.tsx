@@ -155,7 +155,7 @@ export function HomePage() {
             <div className="flex items-center gap-2 mb-3">
               <span className="h-2 w-2 rounded-full bg-amber-500 inline-block animate-pulse" />
               <p className="text-[0.6875rem] font-semibold uppercase tracking-[0.24em] text-white/90">
-                MAKERMAN ATELIER
+                MAKERMAN CLOTHING
               </p>
             </div>
 
@@ -164,7 +164,7 @@ export function HomePage() {
             </h1>
 
             <p className="mt-4 text-xs sm:text-base text-white/85 max-w-lg font-light leading-relaxed">
-              Refined clothing crafted with durable Indian fabrics, architectural cuts, and timeless proportions. Made to feel as good as it looks.
+              Discover premium men's clothing for every style and every occasion. From everyday essentials to timeless fashion, explore our complete collection of shirts, T-shirts, polos, jeans, trousers and more.
             </p>
 
             <div className="mt-8 flex flex-wrap gap-3 sm:gap-4">
@@ -209,7 +209,7 @@ export function HomePage() {
           </h2>
 
           <p className="mt-6 text-xs sm:text-sm md:text-base text-muted-foreground leading-relaxed font-light max-w-xl mx-auto">
-            At Makerman, we reject fleeting trends. We focus on heavy long-staple cottons, balanced drapes, and precise tailoring so every garment brings lasting ease, confidence, and genuine everyday happiness.
+            At Makerman, discover a thoughtfully curated collection of premium men's clothing. From stylish shirts, T-shirts and polos to jeans, trousers and everyday essentials, we bring together quality fabrics, modern fits and timeless styles for every occasion. Dress with confidence. Feel the happiness.
           </p>
         </div>
       </section>
@@ -228,7 +228,7 @@ export function HomePage() {
                 Featured Pieces
               </h2>
               <p className="mt-1.5 text-xs text-muted-foreground">
-                Signature essentials chosen for timeless proportions and superior comfort.
+                Handpicked styles from our premium men's clothing collection.
               </p>
             </div>
             <div>
@@ -288,13 +288,13 @@ export function HomePage() {
         <div className="container-page">
           <div className="text-center max-w-xl mx-auto mb-10">
             <p className="eyebrow text-amber-600 font-semibold tracking-widest">
-              Curated Wardrobes
+              Curated Collections
             </p>
             <h2 className="mt-1 font-display text-2xl sm:text-4xl text-foreground font-normal">
               Category Edit
             </h2>
             <p className="mt-2 text-xs text-muted-foreground">
-              Distinct cuts and tailored blocks built for everyday wear.
+              Explore premium men's styles for every occasion.
             </p>
           </div>
 
@@ -623,17 +623,17 @@ export function HomePage() {
                 Pan-India Delivery
               </p>
               <p className="text-[0.75rem] text-muted-foreground mt-1 leading-relaxed">
-                Complimentary shipping on orders above ₹1,999.
+                Enjoy free delivery on every order, with no minimum purchase.
               </p>
             </div>
 
             <div className="flex flex-col items-start text-left">
-              <RotateCcw className="h-5 w-5 text-amber-600 mb-2" strokeWidth={1.5} />
+              <ShieldCheck className="h-5 w-5 text-amber-600 mb-2" strokeWidth={1.5} />
               <p className="text-xs font-semibold uppercase tracking-wider text-foreground">
-                15-Day Easy Returns
+                Quality You Can Trust
               </p>
               <p className="text-[0.75rem] text-muted-foreground mt-1 leading-relaxed">
-                Doorstep pickup and free size exchange.
+                Carefully selected men's fashion with a focus on style, comfort and quality.
               </p>
             </div>
 
