@@ -180,12 +180,17 @@ export function ProductDetailPage() {
 
   /** Adds the currently selected size+color variant to cart using variant UUID. */
   const handleAddToCart = () => {
+    if (isProductOutOfStock) {
+      toast.error("This product is currently out of stock");
+      return;
+    }
     if (!selectedSize) {
       toast.error("Please select a size first");
       return;
     }
     const availableStock = getVariantStock(product, selectedSize, selectedColor);
     if (availableStock <= 0) {
+      toast.error(`Size ${selectedSize} is currently out of stock`);
       return;
     }
     if (quantity > availableStock) {
@@ -197,14 +202,23 @@ export function ProductDetailPage() {
 
   /** Adds the selected variant to cart and navigates directly to checkout. */
   const handleBuyNow = () => {
+    if (isProductOutOfStock) {
+      toast.error("This product is currently out of stock");
+      return;
+    }
     const sizeToUse =
       selectedSize || getFirstAvailableSize(product, selectedColor) || "";
     if (!sizeToUse) {
-      toast.error("Please select a size first");
+      if (selectedSize) {
+        toast.error(`Size ${selectedSize} is currently out of stock`);
+      } else {
+        toast.error("This product is currently out of stock");
+      }
       return;
     }
     const availableStock = getVariantStock(product, sizeToUse, selectedColor);
     if (availableStock <= 0) {
+      toast.error(`Size ${sizeToUse} is currently out of stock`);
       return;
     }
     if (quantity > availableStock) {
@@ -512,29 +526,16 @@ export function ProductDetailPage() {
             {/* Size Selector with min 44px touch targets */}
             <div className="border-t border-border/80 pt-5">
               <div className="flex items-center justify-between text-xs mb-2.5">
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold uppercase tracking-wider text-foreground">
-                    Select Size
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setOpenAccordion("fit");
-                      document.getElementById("accordion-fit")?.scrollIntoView({ behavior: "smooth" });
-                    }}
-                    className="flex items-center gap-1 text-[0.6875rem] font-medium text-amber-700 hover:text-amber-800 underline underline-offset-2"
-                  >
-                    <Ruler className="h-3 w-3" />
-                    Size Guide
-                  </button>
-                </div>
+                <span className="font-semibold uppercase tracking-wider text-foreground">
+                  Select Size
+                </span>
                 {selectedSize && isCurrentSizeAvailable && (
                   <span className="text-xs font-medium text-muted-foreground">
                     {currentSizeStock} in stock
                   </span>
                 )}
               </div>
-              <div className="grid grid-cols-6 gap-2">
+              <div className="flex flex-wrap gap-2">
                 {product.sizes.map((s) => {
                   const sizeStock = getVariantStock(product, s, selectedColor);
                   const available = sizeStock > 0;
@@ -542,7 +543,6 @@ export function ProductDetailPage() {
                     <button
                       key={s}
                       type="button"
-                      disabled={!available}
                       onClick={() => setSelectedSize(s)}
                       title={
                         !available
@@ -550,15 +550,19 @@ export function ProductDetailPage() {
                           : `${s} (${sizeStock} in stock)`
                       }
                       className={cn(
-                        "h-11 border text-xs font-semibold uppercase tracking-wider rounded-sm transition-all flex items-center justify-center relative",
-                        selectedSize === s && available
-                          ? "border-foreground bg-foreground text-background shadow-xs"
+                        "min-w-[50px] px-3.5 h-11 border text-xs font-semibold uppercase tracking-wider rounded-sm transition-all flex items-center justify-center relative overflow-hidden cursor-pointer",
+                        selectedSize === s
+                          ? available
+                            ? "border-foreground bg-foreground text-background shadow-xs"
+                            : "border-foreground bg-secondary/80 text-foreground font-bold ring-1 ring-foreground"
                           : available
-                            ? "border-border/90 bg-surface text-foreground/80 hover:border-foreground/50"
-                            : "border-border/60 bg-muted/40 text-muted-foreground/40 opacity-40 cursor-not-allowed line-through hover:border-border/60",
+                            ? "border-border/90 bg-surface text-foreground hover:border-foreground/60 hover:bg-secondary/40"
+                            : "border-border bg-[#EAE6DF] text-foreground/60 hover:border-foreground/40",
                       )}
                     >
-                      {s}
+                      <span className={cn("text-center leading-tight", !available && "line-through decoration-foreground/40")}>
+                        {s}
+                      </span>
                     </button>
                   );
                 })}
@@ -571,13 +575,20 @@ export function ProductDetailPage() {
                 <span
                   className={cn(
                     "h-2 w-2 rounded-full",
-                    !isCurrentSizeAvailable || isProductOutOfStock
-                      ? "bg-muted-foreground/40"
+                    isProductOutOfStock || (Boolean(selectedSize) && !isCurrentSizeAvailable)
+                      ? "bg-rose-500"
                       : "bg-emerald-600 animate-pulse",
                   )}
                 />
-                <span className="text-xs font-medium text-muted-foreground">
-                  {!isCurrentSizeAvailable || isProductOutOfStock
+                <span
+                  className={cn(
+                    "text-xs font-semibold",
+                    isProductOutOfStock || (Boolean(selectedSize) && !isCurrentSizeAvailable)
+                      ? "text-rose-600"
+                      : "text-foreground",
+                  )}
+                >
+                  {isProductOutOfStock || (Boolean(selectedSize) && !isCurrentSizeAvailable)
                     ? "Out of Stock"
                     : "In Stock · Ready for Pan-India Dispatch"}
                 </span>
@@ -616,31 +627,21 @@ export function ProductDetailPage() {
               </div>
             </div>
 
-            {/* Desktop Action Buttons: ADD TO BAG, BUY NOW, FAVORITE */}
+            {/* Desktop Action Buttons: ADD TO CART, BUY NOW, FAVORITE */}
             <div className="space-y-3 pt-2">
               <div className="flex gap-3">
                 <Button
                   type="button"
-                  disabled={!isCurrentSizeAvailable || isProductOutOfStock}
                   onClick={handleAddToCart}
-                  className={cn(
-                    "flex-1 h-13 text-xs font-semibold uppercase tracking-[0.14em] rounded-sm transition-all",
-                    !isCurrentSizeAvailable || isProductOutOfStock
-                      ? "bg-muted text-muted-foreground cursor-not-allowed hover:bg-muted opacity-60"
-                      : "bg-ink text-ink-foreground hover:bg-ink/90",
-                  )}
+                  className="flex-1 h-13 text-xs font-semibold uppercase tracking-[0.14em] rounded-sm transition-all bg-ink text-ink-foreground hover:bg-ink/90 cursor-pointer shadow-xs"
                 >
-                  {!selectedSize
-                    ? "Select Size"
-                    : !isCurrentSizeAvailable || isProductOutOfStock
-                      ? "Out of Stock"
-                      : `Add To Bag — ${formatINR(product.price * quantity)}`}
+                  Add To Cart — {formatINR(product.price * quantity)}
                 </Button>
                 <Button
                   type="button"
                   variant="outline"
                   onClick={() => toggleWishlist(product.slug)}
-                  className="h-13 w-13 p-0 grid place-items-center shrink-0 border-border rounded-sm hover:bg-secondary"
+                  className="h-13 w-13 p-0 grid place-items-center shrink-0 border-border rounded-sm hover:bg-secondary cursor-pointer"
                   aria-label={wished ? "Remove from favorites" : "Add to favorites"}
                 >
                   <Heart
@@ -656,16 +657,10 @@ export function ProductDetailPage() {
               <Button
                 type="button"
                 variant="outline"
-                disabled={!isCurrentSizeAvailable || isProductOutOfStock}
                 onClick={handleBuyNow}
-                className={cn(
-                  "w-full h-12 text-xs font-semibold uppercase tracking-[0.14em] rounded-sm transition-all",
-                  !isCurrentSizeAvailable || isProductOutOfStock
-                    ? "border-border/60 text-muted-foreground/50 cursor-not-allowed bg-muted/20 hover:bg-muted/20 hover:text-muted-foreground/50 opacity-60"
-                    : "border-foreground/60 hover:bg-foreground hover:text-background",
-                )}
+                className="w-full h-12 text-xs font-semibold uppercase tracking-[0.14em] rounded-sm transition-all border-foreground/60 hover:bg-foreground hover:text-background cursor-pointer"
               >
-                {!isCurrentSizeAvailable || isProductOutOfStock ? "Out of Stock" : "Buy Now"}
+                Buy Now
               </Button>
             </div>
 
@@ -888,21 +883,11 @@ export function ProductDetailPage() {
 
         <Button
           type="button"
-          disabled={!isCurrentSizeAvailable || isProductOutOfStock}
           onClick={handleAddToCart}
-          className={cn(
-            "flex-1 h-12 text-xs font-semibold uppercase tracking-wider rounded-sm",
-            !isCurrentSizeAvailable || isProductOutOfStock
-              ? "bg-muted text-muted-foreground cursor-not-allowed opacity-60"
-              : "bg-ink text-ink-foreground",
-          )}
+          className="flex-1 h-12 text-xs font-semibold uppercase tracking-wider rounded-sm bg-ink text-ink-foreground hover:bg-ink/90 cursor-pointer"
         >
           <ShoppingBag className="h-4 w-4 mr-1.5" />
-          {!selectedSize
-            ? "Select Size"
-            : !isCurrentSizeAvailable || isProductOutOfStock
-              ? "Out of Stock"
-              : "Add to Bag"}
+          Add to Cart
         </Button>
 
         <Button
