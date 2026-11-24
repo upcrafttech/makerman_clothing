@@ -494,57 +494,73 @@ export const faqs: { category: string; items: { q: string; a: string }[] }[] = [
   {
     category: "Orders",
     items: [
-      { q: "Can I change my order after placing it?", a: "Orders can be edited within 60 minutes of placing them. Write to care@makerman.in with your order number and we will update it before it reaches the studio." },
-      { q: "How do I cancel an order?", a: "Open Account → Orders, select the order and choose Cancel. Cancellation is available until the order is marked Packed." },
-      { q: "Do you take orders over WhatsApp?", a: "Yes. Message +91 98204 41120 and our studio team will place the order for you and share a payment link." },
+      {
+        q: "How can I place an order?",
+        a: "You can browse our collection, select your preferred product and size, add it to your cart, and proceed to checkout.",
+      },
+      {
+        q: "Can I cancel my order?",
+        a: "Yes, you can cancel your order before it has been shipped. To request a cancellation, please contact us on WhatsApp at +91 7897893593, and our customer support team will assist you.",
+      },
+      {
+        q: "Do you take orders over WhatsApp?",
+        a: "Yes. Message +91 7897893593 and our team will place the order for you and share a payment link.",
+      },
     ],
   },
   {
-    category: "Shipping",
+    category: "Returns & Exchanges",
     items: [
-      { q: "How long does delivery take?", a: "Metro cities receive orders in 2–3 working days. Other serviceable PIN codes take 4–6 working days." },
-      { q: "Is shipping free?", a: "Shipping is complimentary on orders above ₹1,999. Below that, a flat ₹99 applies." },
-      { q: "Can I track my order?", a: "Every order ships with a tracking link over SMS and email, and appears under Account → Orders." },
-    ],
-  },
-  {
-    category: "Returns",
-    items: [
-      { q: "What is the return window?", a: "You have 15 days from delivery to return an unworn piece with its tags intact." },
-      { q: "Are exchanges free?", a: "First exchange on any order is free within India." },
-      { q: "How long do refunds take?", a: "Refunds reach the original payment method 5–7 working days after the piece reaches our studio." },
+      {
+        q: "How long does shipping & delivery take?",
+        a: "Orders are processed within 24 to 48 hours. Standard delivery takes 5 to 7 business days.",
+      },
+      {
+        q: "Can I return or exchange a product?",
+        a: "We generally do not accept returns or exchanges. However, an exchange will be provided if you receive a damaged or incorrect item. Please contact our customer support team within 48 hours of delivery.",
+      },
+      {
+        q: "What should I do if I receive a damaged or incorrect product?",
+        a: "If you receive a damaged or incorrect item, please contact our customer support team within 48 hours of delivery and share your order details along with a clear unboxing video. Our team will assist you with the exchange process.",
+      },
     ],
   },
   {
     category: "Payments",
     items: [
-      { q: "Which payment methods do you accept?", a: "UPI (Google Pay, PhonePe, Paytm, BHIM), all major credit and debit cards, and net banking via secure Razorpay checkout." },
-      { q: "Is Cash on Delivery available?", a: "We exclusively accept 100% secure prepaid online payments to ensure swift, contactless processing and priority dispatch." },
-      { q: "Do you store card details?", a: "No. Payments are handled by our RBI-compliant payment gateway partner (Razorpay) and card details never touch our servers." },
+      {
+        q: "Which payment methods do you accept?",
+        a: "UPI (Google Pay, PhonePe, Paytm, BHIM), all major credit and debit cards, and net banking via secure Razorpay checkout.",
+      },
+      {
+        q: "Is Cash on Delivery available?",
+        a: "We exclusively accept 100% secure prepaid online payments to ensure swift, contactless processing and priority dispatch.",
+      },
+      {
+        q: "Do you store card details?",
+        a: "No. Payments are handled by our RBI-compliant payment gateway partner (Razorpay) and card details never touch our servers.",
+      },
     ],
   },
   {
-    category: "Products",
+    category: "Products & Sizes",
     items: [
-      { q: "Where are Makerman pieces made?", a: "Everything is cut and stitched in two partner units in Mumbai, using fabrics milled in Tamil Nadu and Gujarat." },
-      { q: "Will a piece be restocked?", a: "Essentials are restocked continuously. Limited pieces are made once — use Notify Me on the product page." },
-      { q: "How should I care for wool?", a: "Dry clean or hand wash cold with a wool detergent, then dry flat away from sunlight." },
-    ],
-  },
-  {
-    category: "Sizing",
-    items: [
-      { q: "How do your fits run?", a: "Relaxed and oversized styles carry roughly 5cm extra through the chest. If you are between sizes, size down for a cleaner line." },
-      { q: "Do you offer alterations?", a: "Trouser hemming is complimentary at our Mumbai studio." },
-      { q: "Where can I find measurements?", a: "Every product page links to the full size guide with chest, waist, hip, shoulder and length in centimetres." },
-    ],
-  },
-  {
-    category: "Account",
-    items: [
-      { q: "Do I need an account to order?", a: "No, guest checkout is available. An account keeps your addresses and order history in one place." },
-      { q: "How do I reset my password?", a: "Use Forgot Password on the sign-in page and we will send a reset link to your registered email." },
-      { q: "Can I delete my account?", a: "Write to care@makerman.in and we will remove your data within 7 working days." },
+      {
+        q: "How do I choose the correct size?",
+        a: "You can refer to our Size Guide available on each product page to find the best fit.",
+      },
+      {
+        q: "Are the product images accurate?",
+        a: "Yes, we try our best to display accurate product images. However, slight colour variations may occur due to screen settings.",
+      },
+      {
+        q: "Will sold-out products be restocked?",
+        a: "Some products may be restocked. Keep checking our website for availability updates.",
+      },
+      {
+        q: "How should I care for my clothes?",
+        a: "To keep your clothes looking new for longer, wash them in cold or normal water with mild detergent. Wash dark and light colours separately, avoid using bleach, and dry in the shade. For best results, turn garments inside out before washing and avoid excessive ironing.",
+      },
     ],
   },
 ];

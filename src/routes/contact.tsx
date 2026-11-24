@@ -3,7 +3,6 @@ import {
   ChevronDown,
   Clock,
   Mail,
-  MapPin,
   MessageCircle,
   MessageSquare,
   Phone,
@@ -73,7 +72,7 @@ export function ContactPage() {
             Contact {store.name}
           </h1>
           <p className="mt-4 text-xs sm:text-sm text-muted-foreground leading-relaxed">
-            Our atelier team in {store.city || "Mumbai"} is available Monday through Saturday, 10:00 AM – 7:00 PM IST for sizing advice, order status, custom inquiries, or general support.
+            Our customer support team is available Monday through Saturday, 10:00 AM – 7:00 PM IST for sizing advice, order status, custom inquiries, or general support.
           </p>
         </div>
 
@@ -264,15 +263,12 @@ export function ContactPage() {
             )}
           </div>
 
-          {/* Atelier Info Column */}
+          {/* Concierge Info Column */}
           <div className="lg:col-span-5 space-y-6">
             <div className="p-6 border border-border rounded-sm bg-[#FAF8F5] space-y-4">
-              <h3 className="font-display text-lg font-normal text-foreground">{store.name} Atelier</h3>
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                {store.fullAddress}
-              </p>
+              <h3 className="font-display text-lg font-normal text-foreground">{store.name} Support</h3>
 
-              <div className="border-t border-border/80 pt-4 space-y-2 text-xs text-muted-foreground">
+              <div className="space-y-2.5 text-xs text-muted-foreground">
                 <div className="flex items-center gap-2">
                   <Clock className="h-4 w-4 text-amber-600" />
                   <span>Mon – Sat: 10:00 AM – 7:00 PM IST</span>

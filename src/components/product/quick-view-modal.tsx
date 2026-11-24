@@ -205,8 +205,8 @@ export function QuickViewModal() {
                 </div>
               </div>
 
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                {product.shortDescription}
+              <p className="text-xs text-muted-foreground leading-relaxed whitespace-pre-line">
+                {product.description || product.shortDescription}
               </p>
 
               {/* Color selector */}

@@ -476,7 +476,7 @@ export function ProductDetailPage() {
                 </a>
               </div>
 
-              <p className="mt-4 text-xs sm:text-sm text-muted-foreground leading-relaxed">
+              <p className="mt-4 text-xs sm:text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
                 {product.description || product.shortDescription}
               </p>
             </div>
