@@ -180,16 +180,22 @@ export function AccountPage() {
 
     setIsSubmitting(true);
     try {
-      await registerMutation.mutateAsync({
+      const res = await registerMutation.mutateAsync({
         name: authName.trim(),
         email: trimmedEmail,
         password: authPassword,
         phone: cleanedPhone,
       });
-      setAuthMode("otp");
-      toast.success("Verification code sent", {
-        description: `Check your inbox at ${trimmedEmail}`,
-      });
+      if (res?.verificationRequired === false && res?.auth) {
+        authStore.set(res.auth);
+        signIn(res.auth.email, res.auth.name);
+        toast.success("Account created successfully", { description: `Welcome ${res.auth.name}` });
+      } else {
+        setAuthMode("otp");
+        toast.success("Verification code sent", {
+          description: `Check your inbox at ${trimmedEmail}`,
+        });
+      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Registration failed";
       toast.error("Registration failed", { description: msg });

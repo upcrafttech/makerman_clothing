@@ -173,10 +173,17 @@ export function useLogin() {
   });
 }
 
+export interface ApiRegisterResponse {
+  message: string;
+  email: string;
+  verificationRequired?: boolean;
+  auth?: ApiAuthResponse | null;
+}
+
 export function useRegister() {
   return useMutation({
     mutationFn: (b: { name: string; email: string; password: string; phone: string }) =>
-      apiFetch<{ message: string; email: string }>("/auth/register", {
+      apiFetch<ApiRegisterResponse>("/auth/register", {
         method: "POST",
         body: JSON.stringify({ ...b, role: "CUSTOMER" }),
       }),
