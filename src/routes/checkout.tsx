@@ -13,7 +13,7 @@ import {
   Clock,
   Zap,
 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
 
 import { MakermanLogo } from "@/components/layout/makerman-logo";
@@ -26,6 +26,7 @@ import {
   useCreateOrder,
   useCreateRazorpayOrder,
   useVerifyRazorpayPayment,
+  useAbandonOrderPayment,
   useProducts,
   useCustomerAddresses,
   useCreateCustomerAddress,
@@ -255,6 +256,11 @@ export function CheckoutPage() {
   const createOrderMutation = useCreateOrder();
   const createRazorpayOrderMutation = useCreateRazorpayOrder();
   const verifyRazorpayPaymentMutation = useVerifyRazorpayPayment();
+  const abandonOrderPaymentMutation = useAbandonOrderPayment();
+  const pendingOnlineOrderRef = useRef<{
+    signature: string;
+    order: { id: string; orderNumber?: string | null | undefined };
+  } | null>(null);
   const { data: _catalog } = useProducts();
   const [isPlacing, setIsPlacing] = useState(false);
 
@@ -397,14 +403,44 @@ export function CheckoutPage() {
       savedAddressId: selectedSavedAddress && !selectedSavedAddress.id.startsWith("addr-") ? selectedSavedAddress.id : undefined,
     };
 
-    let backendOrder: { id: string } | null = null;
-    try {
-      backendOrder = await createOrderMutation.mutateAsync(payload);
-    } catch (err: any) {
-      console.error("Backend order creation failed:", err);
-      toast.error(err?.message || "Failed to create order on server");
-      setIsPlacing(false);
-      return;
+    const checkoutSignature = JSON.stringify({
+      items: apiItems,
+      totalAmount: finalTotal,
+      customerName: currentAddress.fullName.trim(),
+      customerPhone: cleanPhone,
+      address: currentAddress.line1.trim(),
+      landmark: currentAddress.line2?.trim() || "",
+      city: currentAddress.city.trim(),
+      state: currentAddress.state.trim(),
+      pincode: cleanPincode,
+    });
+
+    let backendOrder: { id: string; orderNumber?: string | null | undefined } | null = null;
+    if (
+      pendingOnlineOrderRef.current &&
+      pendingOnlineOrderRef.current.signature === checkoutSignature
+    ) {
+      backendOrder = pendingOnlineOrderRef.current.order;
+    } else {
+      if (pendingOnlineOrderRef.current) {
+        const staleOrderId = pendingOnlineOrderRef.current.order.id;
+        pendingOnlineOrderRef.current = null;
+        abandonOrderPaymentMutation.mutate(staleOrderId, { onError: () => {} });
+      }
+      try {
+        backendOrder = await createOrderMutation.mutateAsync(payload);
+        if (backendOrder?.id) {
+          pendingOnlineOrderRef.current = {
+            signature: checkoutSignature,
+            order: { id: backendOrder.id, orderNumber: backendOrder.orderNumber },
+          };
+        }
+      } catch (err: any) {
+        console.error("Backend order creation failed:", err);
+        toast.error(err?.message || "Failed to create order on server");
+        setIsPlacing(false);
+        return;
+      }
     }
 
     const platformOrderId = backendOrder?.id;
@@ -416,11 +452,17 @@ export function CheckoutPage() {
 
     // Online payment flow (UPI, Card, Net Banking via Razorpay)
     try {
-      const rzpOrder = await createRazorpayOrderMutation.mutateAsync({
-        platformOrderId,
-        amount: finalTotal,
-        receipt: platformOrderId,
-      });
+      let rzpOrder: Awaited<ReturnType<typeof createRazorpayOrderMutation.mutateAsync>>;
+      try {
+        rzpOrder = await createRazorpayOrderMutation.mutateAsync({
+          platformOrderId,
+          amount: finalTotal,
+          receipt: platformOrderId,
+        });
+      } catch (createRzpErr) {
+        pendingOnlineOrderRef.current = null;
+        throw createRzpErr;
+      }
 
       if (!rzpOrder?.razorpayOrderId || !rzpOrder?.keyId) {
         throw new Error("Razorpay gateway response missing order ID or key");
@@ -449,6 +491,7 @@ export function CheckoutPage() {
               razorpaySignature: response.razorpay_signature,
               platformOrderId: platformOrderId,
             });
+            pendingOnlineOrderRef.current = null;
             completeOrderSuccess(
               platformOrderId,
               `Razorpay Online (${response.razorpay_payment_id.slice(-6)})`,
@@ -466,7 +509,8 @@ export function CheckoutPage() {
         modal: {
           ondismiss: () => {
             setIsPlacing(false);
-            toast.info("Payment cancelled. You can retry when ready.");
+            abandonOrderPaymentMutation.mutate(platformOrderId, { onError: () => {} });
+            toast.info("Payment pending — order not placed. You can retry when ready.");
           },
         },
       });

@@ -441,6 +441,18 @@ export function useVerifyRazorpayPayment() {
   });
 }
 
+export function useAbandonOrderPayment() {
+  const token = authStore.getToken();
+
+  return useMutation({
+    mutationFn: (orderId: string) =>
+      apiFetch<ApiOrder>(`/orders/${orderId}/abandon-payment`, {
+        method: "POST",
+        token,
+      }),
+  });
+}
+
 /* ── Customer Addresses ────────────────────── */
 export function useCustomerAddresses() {
   const token = authStore.getToken();
