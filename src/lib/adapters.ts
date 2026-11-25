@@ -1,5 +1,6 @@
 import type { ApiProduct, ApiCustomerAddress } from "@/types/api";
 import type { Product, ColorOption, Address, ProductImageItem } from "@/types";
+import { optimizeImageUrl, PRODUCT_IMAGE_WIDTH } from "@/lib/cloudinary";
 
 // Runtime registry of live adapted products
 const productRegistry = new Map<string, Product>();
@@ -169,7 +170,7 @@ export function adaptProduct(api: ApiProduct): Product {
     .map((img: any, idx: number) => {
       if (typeof img === "string") {
         return {
-          url: img.trim(),
+          url: optimizeImageUrl(img.trim(), PRODUCT_IMAGE_WIDTH),
           colorName: null,
           colorCode: null,
           sortOrder: idx,
@@ -177,7 +178,7 @@ export function adaptProduct(api: ApiProduct): Product {
       }
       if (img && typeof img === "object") {
         return {
-          url: (img.url || img.imageUrl || "").trim(),
+          url: optimizeImageUrl((img.url || img.imageUrl || "").trim(), PRODUCT_IMAGE_WIDTH),
           colorName: img.colorName?.trim() || null,
           colorCode: img.colorCode?.trim() || null,
           sortOrder: typeof img.sortOrder === "number" ? img.sortOrder : idx,

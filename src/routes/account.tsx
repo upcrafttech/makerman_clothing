@@ -33,6 +33,7 @@ import { cn } from "@/lib/utils";
 import { productService } from "@/services";
 import { authStore } from "@/lib/auth-store";
 import { getRegisteredProduct } from "@/lib/adapters";
+import { optimizeImageUrl, PRODUCT_IMAGE_WIDTH } from "@/lib/cloudinary";
 import { StorefrontLocationSelector } from "@/components/common/storefront-location-selector";
 import { GoogleAuthButton } from "@/components/common/google-auth-button";
 import { parseGoogleJwt } from "@/lib/google-auth";
@@ -1021,7 +1022,10 @@ export function AccountPage() {
           },
           items: (o.items || []).map((it) => {
             const registered = getRegisteredProduct(it.productId) ?? productService.bySlug(it.productId);
-            const resolvedImg = it.imageUrl || registered?.images?.[0] || "/images/p-shirt-1.jpg";
+            const resolvedImg =
+              optimizeImageUrl(it.imageUrl, PRODUCT_IMAGE_WIDTH) ||
+              registered?.images?.[0] ||
+              "/images/p-shirt-1.jpg";
             const targetId = registered?.id || registered?.slug || it.productId;
             return {
               productSlug: targetId,
