@@ -1,3 +1,26 @@
+export type RazorpayPaymentMethod = "upi" | "card" | "netbanking";
+
+export type RazorpayMethodRestriction = Partial<
+  Record<RazorpayPaymentMethod | "wallet" | "emi" | "paylater", boolean>
+>;
+
+/**
+ * Builds the Razorpay `method` option that limits the checkout window to
+ * the single payment method the customer picked on our checkout page.
+ */
+export function buildRazorpayMethodRestriction(
+  selectedMethod: RazorpayPaymentMethod,
+): RazorpayMethodRestriction {
+  return {
+    upi: selectedMethod === "upi",
+    card: selectedMethod === "card",
+    netbanking: selectedMethod === "netbanking",
+    wallet: false,
+    emi: false,
+    paylater: false,
+  };
+}
+
 export interface RazorpayOptions {
   key: string;
   amount: number; // in paise
@@ -10,7 +33,9 @@ export interface RazorpayOptions {
     name?: string;
     email?: string;
     contact?: string;
+    method?: RazorpayPaymentMethod;
   };
+  method?: RazorpayMethodRestriction;
   notes?: Record<string, string>;
   theme?: {
     color?: string;

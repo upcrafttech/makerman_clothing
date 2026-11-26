@@ -37,8 +37,20 @@ import { StorefrontLocationSelector } from "@/components/common/storefront-locat
 import { authStore } from "@/lib/auth-store";
 import { getRegisteredProduct } from "@/lib/adapters";
 import { getVariantStock, getStockByVariantId } from "@/lib/product-stock";
-import { openRazorpayCheckout } from "@/lib/razorpay";
+import { buildRazorpayMethodRestriction, openRazorpayCheckout } from "@/lib/razorpay";
 import type { Address, Order } from "@/types";
+
+const PAYMENT_METHOD_LABELS = {
+  upi: "UPI",
+  card: "Card",
+  netbanking: "Net Banking",
+} as const;
+
+const PAYMENT_METHOD_HINTS = {
+  upi: "Supports GPay, PhonePe, Paytm, CRED, Amazon Pay. The secure Razorpay window will open with UPI only.",
+  card: "Enter your card details in the secure Razorpay window. Card details never touch our servers.",
+  netbanking: "Choose your bank in the secure Razorpay window to complete the payment.",
+} as const;
 
 export const Route = createFileRoute("/checkout")({
   head: () => ({
@@ -479,7 +491,9 @@ export function CheckoutPage() {
           name: currentAddress.fullName,
           contact: cleanPhone,
           ...(authUser?.email ? { email: authUser.email } : {}),
+          method: paymentMethod,
         },
+        method: buildRazorpayMethodRestriction(paymentMethod),
         theme: {
           color: "#171717",
         },
@@ -922,46 +936,10 @@ export function CheckoutPage() {
                     ))}
                   </div>
 
-                  {paymentMethod === "upi" && (
-                    <div className="p-4 bg-[#FAF8F5] border border-border rounded-sm text-center space-y-2 text-xs">
-                      <p className="font-semibold text-foreground">Scan or Approve with Any UPI App</p>
-                      <p className="text-muted-foreground text-[11px]">
-                        Supports GPay, PhonePe, Paytm, CRED, Amazon Pay. Ready to connect Razorpay gateway.
-                      </p>
-                    </div>
-                  )}
-
-                  {paymentMethod === "card" && (
-                    <div className="p-4 bg-[#FAF8F5] border border-border rounded-sm space-y-3 text-xs">
-                      <p className="font-semibold text-foreground">Card Payment Integration Ready</p>
-                      <div className="space-y-2">
-                        <input
-                          type="text"
-                          placeholder="Card Number (4000 1234 5678 9010)"
-                          className="w-full h-10 border border-border px-3 text-xs rounded-sm bg-background font-mono"
-                          disabled
-                        />
-                        <div className="grid grid-cols-2 gap-2">
-                          <input
-                            type="text"
-                            placeholder="MM / YY"
-                            className="h-10 border border-border px-3 text-xs rounded-sm bg-background font-mono"
-                            disabled
-                          />
-                          <input
-                            type="password"
-                            placeholder="CVV"
-                            maxLength={4}
-                            className="h-10 border border-border px-3 text-xs rounded-sm bg-background font-mono"
-                            disabled
-                          />
-                        </div>
-                      </div>
-                      <p className="text-[11px] text-muted-foreground">
-                        End-to-end encrypted card processing compliant with RBI tokenization norms.
-                      </p>
-                    </div>
-                  )}
+                  <div className="p-4 bg-[#FAF8F5] border border-border rounded-sm text-center space-y-2 text-xs">
+                    <p className="font-semibold text-foreground">Pay with {PAYMENT_METHOD_LABELS[paymentMethod]}</p>
+                    <p className="text-muted-foreground text-[11px]">{PAYMENT_METHOD_HINTS[paymentMethod]}</p>
+                  </div>
 
                   <Button
                     disabled={isPlacing || paymentConfigLoading || hasOutOfStockItems}
@@ -977,7 +955,7 @@ export function CheckoutPage() {
                       ? "Securing Garments..."
                       : hasOutOfStockItems
                         ? "Item Out of Stock — Please Update Bag"
-                        : `Pay Online via Razorpay — ${formatINR(finalTotal)}`}
+                        : `Pay via ${PAYMENT_METHOD_LABELS[paymentMethod]} — ${formatINR(finalTotal)}`}
                   </Button>
                 </div>
               )}

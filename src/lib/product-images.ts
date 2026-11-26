@@ -1,10 +1,10 @@
 import type { Product, ColorOption, ProductImageItem } from "@/types";
 
 /**
- * Known color synonyms and family groupings for fuzzy color matching.
+ * Known color synonyms and family groupings used only for legacy untagged URL fallback.
  */
 const COLOR_FAMILIES: Record<string, string[]> = {
-  black: ["black", "noir", "jetblack", "dark", "#000000", "#1a1a1a", "#111111"],
+  black: ["black", "noir", "jetblack", "#000000", "#1a1a1a", "#111111"],
   grey: [
     "grey",
     "gray",
@@ -80,12 +80,11 @@ export function normalizeColor(name?: string | null): string {
 }
 
 /**
- * Checks if two color representations (names or hex codes) match.
+ * Checks if two color representations (names or hex codes) match exactly.
  * Handles:
- * 1. Exact string match
+ * 1. Exact normalized name match
  * 2. Exact hex match
- * 3. Substring / compound word match (e.g. "Heather Grey" vs "Grey")
- * 4. Color family match (e.g. both in "grey" family)
+ * 3. Cross-match when a name field holds a hex code
  */
 export function isColorMatch(
   sourceName?: string | null,
@@ -100,37 +99,13 @@ export function isColorMatch(
 
   if (normSource === "general" || normTarget === "general") return false;
 
-  // 1. Direct match
+  // 1. Exact normalized name or exact hex match
   if (normSource && normTarget && normSource === normTarget) return true;
   if (cleanSourceHex && cleanTargetHex && cleanSourceHex === cleanTargetHex) return true;
 
   // 2. Cross-match name with hex if name is a hex code
   if (normSource.startsWith("#") && cleanTargetHex && normSource === cleanTargetHex) return true;
   if (normTarget.startsWith("#") && cleanSourceHex && normTarget === cleanSourceHex) return true;
-
-  // 3. Substring match for compound names
-  if (normSource && normTarget) {
-    if (normSource.length >= 3 && normTarget.length >= 3) {
-      if (normSource.includes(normTarget) || normTarget.includes(normSource)) {
-        return true;
-      }
-    }
-  }
-
-  // 4. Color family match
-  for (const [, members] of Object.entries(COLOR_FAMILIES)) {
-    const sourceInFamily =
-      (normSource && members.some((m) => normSource.includes(m) || m.includes(normSource))) ||
-      (cleanSourceHex && members.includes(cleanSourceHex));
-
-    const targetInFamily =
-      (normTarget && members.some((m) => normTarget.includes(m) || m.includes(normTarget))) ||
-      (cleanTargetHex && members.includes(cleanTargetHex));
-
-    if (sourceInFamily && targetInFamily) {
-      return true;
-    }
-  }
 
   return false;
 }
@@ -186,10 +161,11 @@ export function getImagesForColor(product: Product, selectedColor?: string | nul
   const activeName = activeColor?.name || selectedColor;
   const activeHex = activeColor?.hex;
 
-  // General images (tagged as 'general' or having no colorName)
-  const generalUrls = productImages
-    .filter((img) => !img.colorName || img.colorName.trim().toLowerCase() === "general")
-    .map((img) => img.url);
+  const isGeneralImage = (img: ProductImageItem) =>
+    (!img.colorName && !img.colorCode) || img.colorName?.trim().toLowerCase() === "general";
+
+  // General images (tagged as 'general' or having no color tag)
+  const generalUrls = productImages.filter(isGeneralImage).map((img) => img.url);
 
   const combineWithGeneral = (colorUrls: string[]) => {
     const isFirst = product.generalImagePosition === "FIRST";
@@ -199,11 +175,12 @@ export function getImagesForColor(product: Product, selectedColor?: string | nul
     return Array.from(new Set(combined.filter(Boolean)));
   };
 
-  // 1. Check explicit color matches from productImages
+  const hasAnyTaggedImages = productImages.some((img) => !isGeneralImage(img));
+
+  // 1. Check explicit exact color matches from productImages
   if (productImages.length > 0) {
     const explicitMatches = productImages.filter((img) => {
-      if (!img.colorName && !img.colorCode) return false;
-      if (img.colorName && img.colorName.trim().toLowerCase() === "general") return false;
+      if (isGeneralImage(img)) return false;
       return isColorMatch(img.colorName, img.colorCode, activeName, activeHex);
     });
 
@@ -212,7 +189,16 @@ export function getImagesForColor(product: Product, selectedColor?: string | nul
     }
   }
 
-  // 2. Check URL / Filename matches
+  // 2. When any image has an explicit color tag, never guess via URL or positional index.
+  //    Return general images if present, otherwise full gallery.
+  if (hasAnyTaggedImages) {
+    if (generalUrls.length > 0) {
+      return Array.from(new Set(generalUrls.filter(Boolean)));
+    }
+    return Array.from(new Set(allImages.filter(Boolean)));
+  }
+
+  // 3. Legacy fallback when no images are tagged: URL / filename keyword match
   const candidateUrls = productImages.length > 0 ? productImages.map((img) => img.url) : allImages;
   const urlMatches = candidateUrls.filter((url) => urlMatchesColor(url, activeName, activeHex));
 
@@ -220,24 +206,10 @@ export function getImagesForColor(product: Product, selectedColor?: string | nul
     return combineWithGeneral(urlMatches);
   }
 
-  // 3. Positional / 1-to-1 index matching:
-  // If product has N colors and candidate images has at least N images, map colorIndex -> imageIndex
-  if (product.colors.length > 1 && candidateUrls.length >= product.colors.length) {
-    const colorIndex = product.colors.findIndex(
-      (c) =>
-        c.name.trim().toLowerCase() === selectedColor.trim().toLowerCase() ||
-        c.hex.trim().toLowerCase() === selectedColor.trim().toLowerCase(),
-    );
-    if (colorIndex >= 0 && candidateUrls[colorIndex]) {
-      return combineWithGeneral([candidateUrls[colorIndex]]);
-    }
-  }
-
-  // 4. Check if there are general images tagged explicitly
+  // 4. Fallback to general images or full gallery
   if (generalUrls.length > 0) {
-    return Array.from(new Set(generalUrls));
+    return Array.from(new Set(generalUrls.filter(Boolean)));
   }
 
-  // 5. Fallback to first image or all images
-  return allImages.length > 0 ? [allImages[0]] : [];
+  return Array.from(new Set(allImages.filter(Boolean)));
 }

@@ -124,14 +124,16 @@ export function adaptProduct(api: ApiProduct): Product {
     colorMap.set(nameKey, resolved);
   };
 
-  // 1. Extract from variants
+  // 1. Extract from variants (canonical source of product colors)
   for (const v of rawVariants) {
     registerColor(v.colorName, v.colorCode);
   }
 
-  // 2. Extract from metafields (colors, color, Color)
+  const hasVariantColors = colorMap.size > 0;
+
+  // 2. Fallback to metafields only when variants have no colors
   const colorsMeta = meta("colors") || meta("color");
-  if (colorsMeta) {
+  if (!hasVariantColors && colorsMeta) {
     try {
       const parsed = JSON.parse(colorsMeta);
       if (Array.isArray(parsed)) {
@@ -188,10 +190,12 @@ export function adaptProduct(api: ApiProduct): Product {
     })
     .filter((img): img is ProductImageItem => Boolean(img && img.url));
 
-  // 3. Extract from productImages if any (skipping general)
-  for (const img of productImages) {
-    if (img.colorName && img.colorName.trim().toLowerCase() !== "general") {
-      registerColor(img.colorName, img.colorCode);
+  // 3. Fallback to productImages only when variants have no colors (skipping general)
+  if (!hasVariantColors) {
+    for (const img of productImages) {
+      if (img.colorName && img.colorName.trim().toLowerCase() !== "general") {
+        registerColor(img.colorName, img.colorCode);
+      }
     }
   }
 
